@@ -4,30 +4,39 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="description" content="A live virtual fitting room for independent Bangladesh fashion.">
-<title>Drape — The live fitting room</title>
-<link rel="stylesheet" href="style.css">
+<title>DЯAPE — Live Try-On</title>
+<link rel="stylesheet" href="style.css"><link rel="stylesheet" href="floor.css">
 <script type="module" src="app.js"></script>
 </head>
 <body>
-<header class="bar"><a class="mark" href="#">drape<span>.</span></a><a href="#edit">The edit</a><button class="pill" data-open>Fitting room</button></header>
-<main id="home">
-  <section class="hero" id="edit">
-    <div class="pin">
-      <div class="mast"><p class="eyebrow">DHAKA / THE FITTING EDIT</p><h1>Wear it<br><em>your way.</em></h1><p>Two labels. A fresh rotation.<br>See what feels like you.</p></div>
-      <div class="film">
-        <video id="editorial" muted playsinline loop autoplay preload="metadata" poster="assets/film-poster.jpg" src="assets/drape-edit.mp4" aria-label="Drape editorial featuring pieces from Gorur Ghash and Wrongs &amp; Rebels"></video>
-        <div class="film-corner">DRAPE / MOTION</div>
-        <button id="play" class="outline film-control" type="button">Pause film</button>
-      </div>
-      <div class="credits"><span>Gorur Ghash &amp; Wrongs &amp; Rebels</span><a href="#camera">Explore the fitting room ↓</a></div>
+<header class="flat-header">
+  <a class="flat-logo" href="./" aria-label="Drape home"><img src="assets/wordmark.png" alt="DЯAPE"></a>
+  <nav aria-label="Main navigation">
+    <button type="button" data-info="about">About</button>
+    <button type="button" data-info="brands">For Brands</button>
+    <button type="button" data-info="menu">Menu</button>
+  </nav>
+</header>
+<main id="home" class="flat-home">
+  <h1 class="visually-hidden">Drape virtual fitting room</h1>
+  <div id="floor" class="floor" aria-label="Garments arranged on a concrete floor">
+    <div class="floor-scene" id="floor-scene">
+      <div id="floor-garments"></div>
+      <button type="button" class="scene-camera" id="scene-camera" aria-label="Try on live">
+        <span class="camera-cutout" aria-hidden="true"></span>
+      </button>
+      <button type="button" class="camera-caption" data-open>Try on live</button>
     </div>
-  </section>
-  <section class="camera-section" id="camera">
-    <div><p class="eyebrow">THE LIVE FITTING ROOM</p><h2>Want to<br><em>try it on?</em></h2><p>Pick a piece and see it on you as you move.</p><button class="pill primary" data-open>Try on clothes</button></div>
-    <div class="camera-art" aria-hidden="true"><div class="shoe"></div><div class="camera-front"><div class="viewfinder"></div><div class="lens"><i></i></div><div class="shutter"></div><b>DRAPE</b></div></div>
-  </section>
-  <footer><a class="mark" href="#">drape<span>.</span></a><span>Virtual fitting &amp; styling</span></footer>
+  </div>
+  <p class="drag-note" aria-hidden="true">☝︎ <span>Drag to explore</span></p>
+  <aside class="hover-label" id="hover-label" hidden>
+    <strong></strong><span></span><small></small>
+  </aside>
 </main>
+<dialog class="flat-info" id="flat-info">
+  <form method="dialog"><button class="outline">Close</button></form>
+  <h2></h2><p></p><button class="pill primary" data-open>Try on live</button>
+</dialog>
 <section id="room" hidden aria-labelledby="room-heading">
   <div class="room-top"><button class="outline" id="back">Back to the edit</button><h1 id="room-heading" tabindex="-1">Fitting room</h1></div>
   <div class="room-grid">
@@ -45,7 +54,7 @@
     </div>
     <aside class="wardrobe">
       <h2>Pick a piece.</h2>
-      <div id="garments" class="garments" aria-label="Demo garments"></div>
+      <div id="garments" class="garments" aria-label="Garments available for try-on" tabindex="0"></div>
       <label class="upload">Upload a garment<input type="file" id="upload" accept="image/jpeg,image/png,image/webp"></label>
       <p id="selection" aria-live="polite"></p>
       <div class="tools"><button class="outline" id="size">Find My Size</button><button class="outline" id="style">Complete the Look</button></div>
@@ -56,3 +65,4 @@
 <div id="flash" aria-hidden="true"></div>
 </body>
 </html>
+

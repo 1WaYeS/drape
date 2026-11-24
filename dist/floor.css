@@ -1,0 +1,158 @@
+:root { --accent: #f5eee5; }
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+.flat-header {
+  position: fixed;
+  z-index: 5;
+  top: 0;
+  left: 0;
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: clamp(.85rem, 2.15vw, 2rem) clamp(1rem, 2.7vw, 3rem);
+  color: #111;
+}
+.flat-logo { display: block; width: clamp(6rem, 9.5vw, 10.5rem); flex-shrink: 0; }
+.flat-logo img { display: block; width: 100%; }
+.flat-header nav { display: flex; gap: clamp(.3rem, 2.5vw, 2.5rem); }
+.flat-header button, .camera-caption {
+  color: inherit;
+  background: transparent;
+  border: 0;
+  font-weight: 700;
+  padding: .35rem;
+  white-space: nowrap;
+}
+.flat-header button:hover { text-decoration: underline; text-underline-offset: .25em; }
+.flat-home, .floor { position: fixed; inset: 0; overflow: hidden; }
+.floor {
+  display: grid;
+  place-items: center;
+  background: #8e8b89 url('assets/floor-backdrop.jpg') center / cover;
+  cursor: grab;
+  touch-action: none;
+  user-select: none;
+}
+.floor-scene {
+  width: max(100vw, 177.683svh);
+  aspect-ratio: 1672 / 941;
+  position: absolute;
+  background: url('assets/flat-floor.jpg') center / 100% 100% no-repeat;
+  will-change: transform;
+}
+.floor.is-dragging, .floor.is-dragging * { cursor: grabbing; }
+.floor-garment {
+  position: absolute;
+  border: 0;
+  background: transparent;
+  transition: background-color 160ms ease;
+}
+.floor-garment:is(:hover, :focus-visible, [aria-pressed=true]) {
+  background-color: #fff2;
+}
+.floor.is-dragging .floor-garment { background: transparent; }
+.scene-camera {
+  position: absolute;
+  left: 47.13%;
+  top: 35.07%;
+  width: 17.59%;
+  height: 24.76%;
+  background: transparent;
+  border: 0;
+  padding: 0;
+  perspective: 750px;
+  filter: drop-shadow(4px 7px 5px #0006);
+}
+.camera-cutout {
+  position: absolute;
+  inset: 0;
+  background: url('assets/floor-camera.jpg') center / 100% 100% no-repeat;
+  clip-path: polygon(0% 56%, 3% 41%, 73% 1%, 77% 0%, 81% 3%, 85% 11%, 88% 15%, 94% 38%, 99% 60%, 99% 64%, 23% 100%, 19% 97%, 4% 64%);
+  transition: transform 260ms cubic-bezier(.2,.7,.2,1), filter 260ms;
+}
+.scene-camera:is(:hover, :focus-visible) .camera-cutout,
+.scene-camera:has(+ .camera-caption:hover) .camera-cutout {
+  transform: translateY(-8%) rotateX(-17deg) rotateY(13deg) rotateZ(-4deg) scale(1.06);
+  filter: brightness(1.14);
+}
+.camera-caption {
+  position: absolute;
+  left: 64.5%;
+  top: 42.6%;
+  border-radius: .4rem;
+  color: #131210;
+  font-size: clamp(.85rem, 1.3vw, 1.25rem);
+}
+.camera-caption:is(:hover, :focus-visible), .scene-camera:hover + .camera-caption {
+  background: #f4f2efd9;
+}
+.drag-note {
+  position: absolute;
+  bottom: clamp(.6rem, 2.1vw, 2rem);
+  left: 50%;
+  margin: 0;
+  transform: translateX(-50%);
+  white-space: nowrap;
+  color: white;
+  font-weight: 700;
+  text-shadow: 0 1px 6px #000, 0 2px 18px #0009;
+  pointer-events: none;
+}
+.drag-note span { padding-left: .35rem; }
+.hover-label {
+  position: fixed;
+  z-index: 6;
+  pointer-events: none;
+  max-width: min(15rem, 75vw);
+  display: grid;
+  gap: .1rem;
+  padding: .65rem .8rem;
+  color: #141414;
+  border: 1px solid #fff7;
+  background: #eeebe6eb;
+  backdrop-filter: blur(12px);
+  box-shadow: 0 4px 18px #0002;
+  border-radius: .5rem;
+}
+.hover-label span, .hover-label small { font-size: .875rem; }
+.flat-info {
+  width: min(26rem, calc(100% - 2rem));
+  padding: 1.5rem;
+  color: #f7f0df;
+  border: 1px solid #fff6;
+  border-radius: 1rem;
+  background: #242220e8;
+}
+.flat-info::backdrop { background: #0005; backdrop-filter: blur(6px); }
+.flat-info form { text-align: right; }
+.flat-info h2 { font-size: 2.9rem; margin: .5rem 0 1rem; }
+.in-room .flat-header { color: white; }
+.in-room .flat-logo img { filter: invert(1); }
+body.in-room { background: #1e1b19 url('assets/floor-backdrop.jpg') center / cover fixed; }
+#room { padding-top: clamp(5rem, 8vw, 7.25rem); }
+.room-grid {
+  background: #272322db;
+  backdrop-filter: blur(16px);
+  padding: clamp(.85rem, 2.4vw, 2.5rem);
+  border: 1px solid #fff4;
+  border-radius: 1.25rem;
+}
+.garments { overflow-y: auto; max-height: min(42vh, 420px); padding: 2px 8px 2px 2px; scrollbar-color: #eee #393735; scrollbar-width: thin; }
+@media (max-aspect-ratio: 5/4) {
+  .floor-scene { width: max(100vw, 154svh); height: 100svh; }
+  .camera-caption { left: 63.5%; top: 43%; }
+  .flat-header { background: linear-gradient(#e4e1d8ac, transparent); }
+  .in-room .flat-header { background: linear-gradient(#1e1917ad, transparent); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .camera-cutout { transition: none; }
+}

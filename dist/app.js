@@ -1,9 +1,10 @@
+import { setupFloor, extraGarments } from './floor.js';
+
 const $ = (selector) => document.querySelector(selector);
 const home = $('#home');
 const room = $('#room');
 const mirror = $('#mirror');
 const status = $('#status');
-const film = $('#editorial');
 const motion = matchMedia('(prefers-reduced-motion: reduce)');
 const modelName = 'lucy-vton-3.6';
 const poloChart = [38, 40, 42, 44, 46].map((chest, i) => [['S','M','L','XL','XXL'][i], chest * 2.54]);
@@ -30,6 +31,7 @@ const catalog = [
     description: 'brown long-sleeve boxy check shirt with lighter brown checks and a single chest pocket',
     looks: ['Taupe wide-leg trousers', 'Faded black denim', 'Cream low-top sneakers'] }
 ];
+catalog.push(...extraGarments);
 let selected = catalog[0];
 let tool = null;
 let stream = null;
@@ -40,34 +42,12 @@ let queue = Promise.resolve();
 let previousFocus;
 let previousScroll = 0;
 
-function filmButton() {
-  $('#play').textContent = film.paused ? 'Play film' : 'Pause film';
-}
-film.autoplay = !motion.matches;
-if (motion.matches) film.pause();
-film.addEventListener('play', filmButton);
-film.addEventListener('pause', filmButton);
-filmButton();
-$('#play').addEventListener('click', () => {
-  if (film.paused) film.play().catch(filmButton);
-  else film.pause();
-});
-let scrollFrame = 0;
-addEventListener('scroll', () => {
-  if (scrollFrame || motion.matches || home.hidden) return;
-  scrollFrame = requestAnimationFrame(() => {
-    $('.film').style.setProperty('--film-y', `${Math.min(scrollY * .06, 28)}px`);
-    const cameraOffset = $('#camera').getBoundingClientRect().top - innerHeight * .4;
-    $('.camera-art').style.setProperty('--camera-y', `${Math.max(-38, Math.min(38, cameraOffset * .13))}px`);
-    scrollFrame = 0;
-  });
-}, { passive: true });
-
 function openRoom(event) {
   if (!room.hidden) return;
   previousFocus = event.currentTarget;
   previousScroll = scrollY;
-  film.pause();
+  $('#flat-info').close();
+  document.body.classList.add('in-room');
   home.hidden = true;
   room.hidden = false;
   window.scrollTo({ top: 0, behavior: 'instant' });
@@ -102,7 +82,7 @@ $('#back').addEventListener('click', () => {
   home.hidden = false;
   window.scrollTo({ top: previousScroll, behavior: 'instant' });
   previousFocus?.focus({ preventScroll: true });
-  if (!motion.matches) film.play().catch(filmButton);
+  document.body.classList.remove('in-room');
 });
 $('#stop').addEventListener('click', stopCamera);
 addEventListener('pagehide', stopCamera);
@@ -135,7 +115,9 @@ function applyGarment() {
     if (current !== realtime || update !== revision) return;
     await current.set({
       image, enhance: false,
-      prompt: garment.description
+      prompt: garment.file === 'yard' || garment.file === 'stallion'
+        ? 'Replace the current trousers with the reference denim jeans. Preserve the person, top and background.'
+        : garment.description
         ? `Replace the current top with the reference ${garment.description}. Preserve the person, pose and background.`
         : 'Apply the visible reference garment to the person. Preserve garment details, pose and background.'
     });
@@ -283,3 +265,6 @@ for (const name of ['size', 'style']) {
   });
 }
 selectGarment(selected);
+
+setupFloor(catalog, selectGarment, openRoom);
+
