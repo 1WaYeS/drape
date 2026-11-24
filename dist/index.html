@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="description" content="A live virtual fitting room for independent Bangladesh fashion.">
+<title>Drape — The live fitting room</title>
+<link rel="stylesheet" href="style.css">
+<script type="module" src="app.js"></script>
+</head>
+<body>
+<header class="bar"><a class="mark" href="#">drape<span>.</span></a><a href="#edit">The edit</a><button class="pill" data-open>Fitting room</button></header>
+<main id="home">
+  <section class="hero" id="edit">
+    <div class="pin">
+      <div class="mast"><p class="eyebrow">DHAKA / THE FITTING EDIT</p><h1>Wear it<br><em>your way.</em></h1><p>Two labels. A fresh rotation.<br>See what feels like you.</p></div>
+      <div class="film">
+        <video id="editorial" muted playsinline loop autoplay preload="metadata" poster="assets/film-poster.jpg" src="assets/drape-edit.mp4" aria-label="Drape editorial featuring pieces from Gorur Ghash and Wrongs &amp; Rebels"></video>
+        <div class="film-corner">DRAPE / MOTION</div>
+        <button id="play" class="outline film-control" type="button">Pause film</button>
+      </div>
+      <div class="credits"><span>Gorur Ghash &amp; Wrongs &amp; Rebels</span><a href="#camera">Explore the fitting room ↓</a></div>
+    </div>
+  </section>
+  <section class="camera-section" id="camera">
+    <div><p class="eyebrow">THE LIVE FITTING ROOM</p><h2>Want to<br><em>try it on?</em></h2><p>Pick a piece and see it on you as you move.</p><button class="pill primary" data-open>Try on clothes</button></div>
+    <div class="camera-art" aria-hidden="true"><div class="shoe"></div><div class="camera-front"><div class="viewfinder"></div><div class="lens"><i></i></div><div class="shutter"></div><b>DRAPE</b></div></div>
+  </section>
+  <footer><a class="mark" href="#">drape<span>.</span></a><span>Virtual fitting &amp; styling</span></footer>
+</main>
+<section id="room" hidden aria-labelledby="room-heading">
+  <div class="room-top"><button class="outline" id="back">Back to the edit</button><h1 id="room-heading" tabindex="-1">Fitting room</h1></div>
+  <div class="room-grid">
+    <div class="mirror-column">
+      <div class="camera-back">
+        <div class="camera-brand">DRAPE <span>LIVE VIEW</span></div>
+        <div class="view">
+          <video id="mirror" autoplay playsinline muted hidden></video>
+          <div id="standby"><span class="focus-box"></span><p>Your mirror is ready</p><button class="pill primary" id="start">Enable camera</button></div>
+          <span id="view-label" class="view-label" hidden></span>
+        </div>
+        <div class="camera-base"><span>DRAPE / LIVE FITTING</span><button class="outline" id="stop" hidden>Turn camera off</button></div>
+      </div>
+      <p id="status" role="status">Enable your camera when you’re ready. Live try-on sends your video to Decart.</p>
+    </div>
+    <aside class="wardrobe">
+      <h2>Pick a piece.</h2>
+      <div id="garments" class="garments" aria-label="Demo garments"></div>
+      <label class="upload">Upload a garment<input type="file" id="upload" accept="image/jpeg,image/png,image/webp"></label>
+      <p id="selection" aria-live="polite"></p>
+      <div class="tools"><button class="outline" id="size">Find My Size</button><button class="outline" id="style">Complete the Look</button></div>
+      <div id="tool-panel" hidden></div>
+    </aside>
+  </div>
+</section>
+<div id="flash" aria-hidden="true"></div>
+</body>
+</html>
