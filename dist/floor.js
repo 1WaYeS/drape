@@ -35,7 +35,7 @@ const studioEdit = {
   'washed-graphic-tee': ['Washed Graphic Tee', -508, 297, 355, 24, 1],
   'blue-denim': ['Blue Denim', -25, 316, 409, 26, 2, true],
   'brown-jeans': ['Brown Jeans', 510, 418, 392, 14, 3, true],
-  'charcoal-graphic-tee': ['Charcoal Graphic Tee', 1035, -504, 370, -14, 1]
+  'charcoal-graphic-tee': ['Charcoal Graphic Tee', 1110, -478, 345, -14, 1]
 };
 
 export const studioGarments = Object.entries(studioEdit).map(([id, [name,,,,,,bottoms]]) => ({
@@ -44,15 +44,15 @@ export const studioGarments = Object.entries(studioEdit).map(([id, [name,,,,,,bo
 }));
 
 const exploration = {
-  maroon: [-1870,-788,355,-15], green: [1212,-928,320,21],
-  flight: [2087,-1190,358,-12], coast: [-1090,-675,346,26],
-  cornflower: [74,-1435,310,-14], stripe: [2250,10,350,-15],
-  pearl: [-2330,31,349,15], fig: [-290,851,342,27],
-  yard: [1156,764,350,-49], stallion: [1790,1120,326,21],
-  zigzag: [-470,-886,320,11], plum: [-1284,-102,346,-19],
-  cream: [1295,115,314,23], brown: [120,1330,329,-13],
-  anchor: [-2260,1360,365,34], ash: [1550,-430,315,-22],
-  forest: [-2160,-1250,350,20], wrath: [2260,1380,345,-12]
+  maroon: [-1065,-505,325,-15], green: [686,-665,322,21],
+  flight: [1220,-177,322,-12], coast: [-166,-1053,322,26],
+  cornflower: [115,-776,298,-14], stripe: [1215,196,316,-15],
+  pearl: [-1230,-180,320,15], fig: [-202,706,310,12],
+  yard: [1160,574,342,-49], stallion: [252,1046,335,41],
+  zigzag: [-287,-735,320,11], plum: [-1200,210,325,-19],
+  cream: [229,-1082,292,23], brown: [245,694,329,-13],
+  anchor: [-1100,640,340,34], ash: [912,395,298,-22],
+  forest: [-978,380,310,20], wrath: [-174,1059,300,-12]
 };
 
 const prices = {
@@ -62,7 +62,7 @@ const prices = {
 };
 const amount = new Intl.NumberFormat('en-BD');
 const cameraPiece = { x: 93, y: -40, width: 265, height: 191, angle: -.32 };
-const bounds = { x: 2380, y: 1460 };
+const bounds = { x: 1060, y: 582 };
 const limit = (value, max) => Math.max(-max, Math.min(max, value));
 
 function shutter(delay) {
@@ -187,7 +187,9 @@ export function setupFloor(catalog, selectGarment, openRoom, finishRoom, fireFla
     width = floor.clientWidth;
     height = floor.clientHeight;
     if (!width || !height) return;
-    scale = Math.max(width / 1672, height / 970);
+    scale = width / height < .87
+      ? Math.max(width / 1260, height / 1350)
+      : Math.max(width / 1672, height / 970);
     const narrow = width / scale < 680;
     cameraCaption.style.left = (narrow ? cameraPiece.x - 54 : cameraPiece.x + cameraPiece.width * .51) + 'px';
     cameraCaption.style.top = (cameraPiece.y + (narrow ? cameraPiece.height * .54 : 18)) + 'px';
@@ -326,8 +328,8 @@ export function setupFloor(catalog, selectGarment, openRoom, finishRoom, fireFla
       hoverTarget = 0;
       hideLabel();
     }
-    const horizontalGain = Math.max(1.35 / scale, bounds.x / (width * .79));
-    const verticalGain = Math.max(1.35 / scale, bounds.y / (height * .72));
+    const horizontalGain = Math.max(1 / scale, bounds.x / (width * .79));
+    const verticalGain = Math.max(1 / scale, bounds.y / (height * .72));
     x = limit(drag.x - dx * horizontalGain, bounds.x);
     y = limit(drag.y - dy * verticalGain, bounds.y);
     requestDraw();

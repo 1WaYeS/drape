@@ -1,7 +1,7 @@
 import {
   AmbientLight, CanvasTexture, DirectionalLight, Euler, Group, HemisphereLight, Mesh,
   MeshBasicMaterial, OrthographicCamera, PlaneGeometry, Quaternion, RepeatWrapping, Scene,
-  ShaderMaterial, SRGBColorSpace, TextureLoader, Vector3, WebGLRenderer
+  ShaderMaterial, SRGBColorSpace, TextureLoader, Vector2, Vector3, WebGLRenderer
 } from './vendor/three.module.min.js';
 import { createRangefinder, studioReflections } from './rangefinder.js';
 
@@ -24,20 +24,31 @@ function ground(maps) {
 
 function shadowTexture(image, blur) {
   const canvas = document.createElement('canvas');
-  canvas.width = canvas.height = 160;
+  canvas.width = canvas.height = 224;
   const context = canvas.getContext('2d');
-  context.filter = 'blur(' + blur + 'px) brightness(0)';
-  context.drawImage(image, 23, 23, 114, 114);
-  return new CanvasTexture(canvas);
+  context.filter = 'blur(' + blur + 'px)';
+  context.drawImage(image, 32, 32, 160, 160);
+  context.filter = 'none';
+  context.globalCompositeOperation = 'source-in';
+  context.fillStyle = '#211a15';
+  context.fillRect(0, 0, 224, 224);
+  const map = new CanvasTexture(canvas);
+  map.colorSpace = SRGBColorSpace;
+  return map;
 }
 
 function makeShadows(image, width, height, thickness, camera = false) {
-  return [[6 + thickness * .16, .31, 1.05], [2.1, .48, .28], [.72, .36, .08]].map(([blur, opacity, spread], index) => {
+  const layers = [
+    [8.5 + thickness * .13, .30, 1.48],
+    [3.8 + thickness * .075, .51, .83],
+    [1.5, .71, .21]
+  ];
+  return layers.map(([blur, opacity, spread], index) => {
     const mesh = new Mesh(plane, new MeshBasicMaterial({
       map: shadowTexture(image, blur), transparent: true, depthWrite: false, opacity
     }));
-    mesh.scale.set(width * 1.405, height * 1.405, 1);
-    mesh.position.set((9 + thickness) * spread, -(13 + thickness) * spread, 1 + index * .05);
+    mesh.scale.set(width * 1.40, height * 1.40, 1);
+    mesh.position.set((10 + thickness) * spread, -(12 + thickness) * spread, 1 + index * .05);
     mesh.renderOrder = camera ? 2 : 1;
     return { mesh, opacity, spread };
   });
@@ -94,10 +105,19 @@ export async function createStudio(floor, pieces, cameraPiece, draw) {
   world.add(ground([cement, aggregate]));
   pieces.forEach((piece, i) => {
     const { x, y, width, height, angle, stack } = piece;
+    const photo = maps[i];
     const object = new Group();
     object.position.set(x, -y, 0);
     const surface = new Mesh(plane, new ShaderMaterial({
-      uniforms: { photo: { value: maps[i] } },
+      uniforms: {
+        photo: { value: photo },
+        worldStep: { value: new Vector2(3.8 / width, 3.8 / height) },
+        localSun: { value: new Vector2(
+          -.63 * Math.cos(angle) - .77 * Math.sin(angle),
+          -.63 * Math.sin(angle) + .77 * Math.cos(angle)
+        ) },
+        side: { value: 0 }
+      },
       vertexShader: GARMENT_VERTEX,
       fragmentShader: GARMENT,
       transparent: true,
@@ -107,10 +127,27 @@ export async function createStudio(floor, pieces, cameraPiece, draw) {
     surface.position.z = 5 + stack;
     surface.scale.set(width, height, 1);
     surface.renderOrder = 10 + stack;
+
+    // An offset edge pass exposes the photographed hem on the shadow side.
+    const hem = new Mesh(plane, surface.material.clone());
+    hem.material.uniforms.photo.value = photo;
+    hem.material.uniforms.side.value = 1;
+    hem.scale.copy(surface.scale);
+    hem.rotation.copy(surface.rotation);
+    hem.position.set(2.1, -3.5, 4 + stack);
+    hem.renderOrder = surface.renderOrder - .1;
+    object.add(hem);
     object.add(surface);
-    for (const { mesh } of makeShadows(maps[i].image, width, height, stack + 5)) {
+    for (const { mesh, spread } of makeShadows(photo.image, width, height, stack > 7 ? 9 : 5)) {
       const anchor = new Group();
       anchor.position.copy(mesh.position);
+      if (stack > 7) {
+        // Raised pieces cast their tighter shadow on the textile below.
+        mesh.renderOrder = surface.renderOrder - 1;
+        anchor.position.x *= .88;
+        anchor.position.y *= .86;
+        if (spread < .5) mesh.material.opacity *= .78;
+      }
       mesh.position.set(0, 0, 0);
       anchor.rotation.z = -angle;
       anchor.add(mesh);
@@ -281,12 +318,15 @@ const GROUND = /* glsl */ `
   void main() {
     vec2 p = floorXY;
     float blend = smoothstep(.18,.81,noise(p/340.));
-    vec3 a = texture2D(cement, p/840.).rgb;
-    vec3 b = texture2D(aggregate, mat2(.71,-.71,.71,.71)*p/1107.).rgb;
+    vec3 a = texture2D(cement, p/615.).rgb;
+    vec3 b = texture2D(aggregate, mat2(.71,-.71,.71,.71)*p/763.).rgb;
     vec3 stone = mix(a,b,blend);
-    float stain = (noise(p/188.)-.5)*.052+(noise(p/57.)-.5)*.019;
+    float stain = (noise(p/188.)-.5)*.036+(noise(p/57.)-.5)*.018;
+    float grit = (noise(p/3.1)-.5)*.020 + (noise(p/9.7)-.5)*.014;
+    float pores = pow(max(0., 1.-noise(p/4.6)), 10.)*.033;
+    float detail = 1.-smoothstep(1.4,4.,length(fwidth(p)));
     float sun = studioLight(p);
-    gl_FragColor = vec4(max(stone*(.89+sun*1.8)+stain+sun*vec3(.17,.106,.062),0.),1.);
+    gl_FragColor = vec4(max(stone*(.89+sun*1.75)+stain+(grit-pores)*detail+sun*vec3(.17,.106,.062),0.),1.);
     #include <colorspace_fragment>
   }
 `;
@@ -302,13 +342,31 @@ const GARMENT_VERTEX = /* glsl */ `
 
 const GARMENT = /* glsl */ `
   uniform sampler2D photo;
+  uniform vec2 worldStep, localSun;
+  uniform float side;
   varying vec2 imageUV, surfaceXY;
   ${LIGHT}
+  float relief(vec2 uv) {
+    vec4 broad = texture2D(photo, uv, 3.75);
+    float lightness = sqrt(max(0.,dot(broad.rgb,vec3(.2126,.7152,.0722))));
+    return broad.a*(.74+.42*lightness);
+  }
   void main() {
     vec4 garment = texture2D(photo,imageUV);
     if (garment.a < .024) discard;
-    float sun = studioLight(surfaceXY);
-    gl_FragColor = vec4(garment.rgb*(.91+sun*.43)+sun*vec3(.018,.01,.004),garment.a);
+    if (side > .5) {
+      gl_FragColor = vec4(garment.rgb*.42, garment.a*.91);
+    } else {
+      float sun = studioLight(surfaceXY);
+      vec2 dx = vec2(worldStep.x,0.);
+      vec2 dy = vec2(0.,worldStep.y);
+      vec2 slope = vec2(relief(imageUV+dx)-relief(imageUV-dx), relief(imageUV+dy)-relief(imageUV-dy));
+      vec3 normal = normalize(vec3(-slope*3.1,1.));
+      float shape = dot(normal,normalize(vec3(localSun,1.1)))-.74;
+      float textile = .99+shape*.34+sun*.32;
+      vec3 colour = garment.rgb*textile+sun*vec3(.014,.008,.003);
+      gl_FragColor = vec4(colour,garment.a);
+    }
     #include <colorspace_fragment>
   }
 `;
