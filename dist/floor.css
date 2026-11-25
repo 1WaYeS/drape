@@ -94,10 +94,12 @@
   color: #fff9f0;
   font-size: 21px;
   text-shadow: 0 1px 6px #211914d9;
-  transition: background-color 180ms ease, border-color 180ms ease;
+  opacity: 0;
+  transition: opacity 220ms ease, background-color 180ms ease, border-color 180ms ease;
 }
 .camera-caption:is(:hover, :focus-visible), .camera-hovered .camera-caption, .floor:not(.has-studio) .camera-caption {
-  background: #30282470;
+  opacity: 1;
+  background: #30282454;
   border-color: #fff7;
   backdrop-filter: blur(10px);
 }
@@ -209,3 +211,5 @@ body.in-room { background: #211b18 radial-gradient(ellipse at 16% 14%, #5c493c, 
 @media (prefers-reduced-motion: reduce) {
   .camera-caption { transition: none; }
 }
+
+@media (hover: none) { .camera-caption { opacity: 1; } }

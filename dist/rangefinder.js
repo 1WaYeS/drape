@@ -1,5 +1,5 @@
 import {
-  BoxGeometry, BufferGeometry, CanvasTexture, Color, CylinderGeometry, EquirectangularReflectionMapping, Float32BufferAttribute,
+  DataTexture, FloatType, RGBAFormat, LinearFilter, RingGeometry, BoxGeometry, BufferGeometry, CanvasTexture, Color, CylinderGeometry, EquirectangularReflectionMapping, Float32BufferAttribute,
   ExtrudeGeometry, Group, InstancedMesh, LatheGeometry, Mesh, MeshPhysicalMaterial, Object3D, PlaneGeometry,
   RepeatWrapping, Shape, SRGBColorSpace, Vector2
 } from './vendor/three.module.min.js';
@@ -12,22 +12,22 @@ function canvas(width, height) {
 }
 
 function surface(kind) {
-  const [image, context] = canvas(256, 256);
+  const [image, context] = canvas(1024, 1024);
   context.fillStyle = kind === 'leather' ? '#58605a' : '#aaa';
-  context.fillRect(0, 0, 256, 256);
+  context.fillRect(0, 0, 1024, 1024);
   let seed = 29;
   const random = () => {
     seed = (Math.imul(seed, 1664525) + 1013904223) >>> 0;
     return seed / 4294967296;
   };
   const leather = kind === 'leather';
-  for (let i = 0; i < (leather ? 4400 : 1600); i++) {
-    const x = random() * 256;
-    const y = random() * 256;
+  for (let i = 0; i < (leather ? 48000 : 18500); i++) {
+    const x = random() * 1024;
+    const y = random() * 1024;
     context.fillStyle = random() > .48 ? '#fff3' : '#0004';
     if (leather) {
       context.beginPath();
-      context.ellipse(x, y, .5 + random() * 2.4, .4 + random() * 1.3, random() * 3, 0, Math.PI * 2);
+      context.ellipse(x, y, .5 + random() * 5.3, .4 + random() * 2.4, random() * 3, 0, Math.PI * 2);
       context.fill();
     } else {
       context.fillRect(x, y, 6 + random() * 70, .32);
@@ -39,24 +39,21 @@ function surface(kind) {
 }
 
 export function studioReflections() {
-  const [image, context] = canvas(512, 256);
-  const gradient = context.createLinearGradient(0, 0, 0, 256);
-  gradient.addColorStop(0, '#c7bcb1');
-  gradient.addColorStop(.42, '#696365');
-  gradient.addColorStop(.65, '#3c3839');
-  gradient.addColorStop(1, '#514940');
-  context.fillStyle = gradient;
-  context.fillRect(0, 0, 512, 256);
-  context.filter = 'blur(6px)';
-  context.fillStyle = '#fff3df';
-  context.fillRect(24, 40, 119, 60);
-  context.fillRect(207, 2, 139, 30);
-  context.fillStyle = '#bbc9e0';
-  context.fillRect(271, 51, 42, 76);
-  context.fillStyle = '#e6d8bf';
-  context.fillRect(408, 37, 60, 32);
-  const texture = new CanvasTexture(image);
-  texture.colorSpace = SRGBColorSpace;
+  const width = 512, height = 256;
+  const pixels = new Float32Array(width * height * 4);
+  const edge = (p, halfWidth, softness) => 1 / (1 + Math.exp((Math.abs(p) - halfWidth) / softness));
+  for (let y = 0; y < height; y++) {
+    for (let x = 0; x < width; x++) {
+      const u = x / width, v = y / height;
+      const key = 4.5 * edge(u-.84,.10,.004) * edge(v-.72,.15,.008) * (1-.85*edge(u-.84,.002,.001));
+      const bounce = edge(u-.25,.065,.014) * edge(v-.61,.21,.018);
+      const wall = .085 + .20*v;
+      pixels.set([wall+key+bounce*.81,wall*.95+key*.91+bounce*.89,wall*.87+key*.79+bounce,1],(y*width+x)*4);
+    }
+  }
+  const texture = new DataTexture(pixels,width,height,RGBAFormat,FloatType);
+  texture.magFilter = texture.minFilter = LinearFilter;
+  texture.needsUpdate = true;
   texture.mapping = EquirectangularReflectionMapping;
   return texture;
 }
@@ -75,7 +72,7 @@ function roundedPanel(width, height, radius, depth, bevel) {
   path.lineTo(x, y + radius);
   path.quadraticCurveTo(x, y, x + radius, y);
   const geometry = new ExtrudeGeometry(path, {
-    depth, bevelEnabled: true, bevelSegments: 3, bevelSize: bevel, bevelThickness: bevel, curveSegments: 9
+    depth, bevelEnabled: true, bevelSegments: 5, bevelSize: bevel, bevelThickness: bevel, curveSegments: 9
   });
   geometry.translate(0, 0, -depth / 2);
   const uv = geometry.attributes.uv;
@@ -149,11 +146,11 @@ export function createRangefinder() {
     new MeshPhysicalMaterial({ color: new Color(color), metalness, roughness, ...details });
   const brush = surface('metal');
   const grain = surface('leather');
-  const silver = material('#e1dace', .81, .37, { roughnessMap: brush, bumpMap: brush, bumpScale: .09 });
+  const silver = material('#e1dace', .98, .44, { anisotropy: .56, roughnessMap: brush, bumpMap: brush, bumpScale: .035 });
   const chrome = material('#dfdbd2', .91, .19);
   const blackMetal = material('#222326', .77, .33, { clearcoat: .28 });
   const rubber = material('#1c1c1c', .1, .71);
-  const leather = material('#242220', .05, .75, { bumpMap: grain, bumpScale: 1.4 });
+  const leather = material('#242220', .05, .75, { bumpMap: grain, roughnessMap: grain, bumpScale: .5 });
   const coating = labelTexture(256, 256, (ctx) => {
     const tint = ctx.createRadialGradient(116, 111, 29, 129, 129, 127);
     tint.addColorStop(0, '#111619');
@@ -176,7 +173,21 @@ export function createRangefinder() {
     ctx.fillStyle = aperture;
     ctx.fillRect(0, 0, 256, 256);
   });
-  const glass = material('#bdc4c5', .25, .17, { map: coating, clearcoat: 1, clearcoatRoughness: .12, iridescence: .37 });
+  // An optical stop under the curved glass gives the centre a visible depth cue.
+  const optics = coating.image.getContext('2d');
+  const well = optics.createRadialGradient(131,134,5,128,128,111);
+  for (const [at, tint] of [[0,'#030709'],[.28,'#070c0c'],[.39,'#252b26'],
+    [.48,'#0b0d12'],[.70,'#322733'],[.76,'#1c2426'],[.93,'#0c1012'],[1,'#252525']]) well.addColorStop(at,tint);
+  optics.fillStyle = well;
+  optics.fillRect(0,0,256,256);
+  for (const [x,y,r,rgb] of [[94,89,24,'148,187,145'],[88,81,9,'213,223,205'],[159,157,16,'127,88,145']]) {
+    const glint = optics.createRadialGradient(x,y,0,x,y,r);
+    glint.addColorStop(0,'rgba('+rgb+',.8)');
+    glint.addColorStop(1,'rgba('+rgb+',0)');
+    optics.fillStyle = glint;
+    optics.fillRect(x-r,y-r,r*2,r*2);
+  }
+  const glass = material('#bdc4c5', .25, .17, { map: coating, envMapIntensity: .35, clearcoat: .48, clearcoatRoughness: .12, iridescence: .37 });
   const finderGlass = material('#202028', .38, .18, { clearcoat: 1, iridescence: .45 });
   const lettering = new MeshPhysicalMaterial({ color: 0xffffff, transparent: true, roughness: .75, depthWrite: false });
   const bolt = material('#6a6a63', .9, .31);
@@ -189,7 +200,27 @@ export function createRangefinder() {
   }
 
   part(roundedPanel(216, 127, 11, 38, 2.2), silver);
-  part(roundedPanel(216, 93, 8, 43.4, 1.2), leather, 0, -9);
+  const leatherShell = part(roundedPanel(216, 93, 8, 43.4, 1.2), leather, 0, -9);
+  const grainMap = labelTexture(1024, 448, (ctx,w,h) => {
+    ctx.fillStyle = '#3a3734';
+    ctx.fillRect(0,0,w,h);
+    ctx.globalAlpha = .42;
+    ctx.globalCompositeOperation = 'soft-light';
+    ctx.drawImage(grain.image,0,0,w,h);
+    ctx.globalCompositeOperation = 'source-over';
+    ctx.globalAlpha = 1;
+    const seat = ctx.createRadialGradient(w*.58,h*.53,185,w*.58,h*.53,263);
+    seat.addColorStop(0,'#070605ae');
+    seat.addColorStop(1,'#07060500');
+    ctx.fillStyle = seat;
+    ctx.fillRect(0,0,w,h);
+  });
+  const uv = leatherShell.geometry.attributes.uv;
+  const pos = leatherShell.geometry.attributes.position;
+  for (let i=0;i<uv.count;i++) uv.setXY(i,pos.getX(i)/216+.5,pos.getY(i)/93+.5);
+  leather.color.set('#adaba8');
+  leather.map = grainMap;
+  leather.roughness = .94;
   part(roundedPanel(214, 6, 2, 40, .62), silver, 0, -59);
   part(roundedPanel(215, 7, 2, 40, .7), silver, 0, 52);
   part(roundedPanel(79, 5, 1.5, 26, .7), blackMetal, -15, 65, -2);
@@ -212,6 +243,14 @@ export function createRangefinder() {
   part(disc(34, 2), blackMetal, 0, 0, 39, barrel);
   part(disc(31.5, 2), bolt, 0, 0, 40.2, barrel);
   part(coatedOptic(), glass, 0, 0, 42, barrel);
+  for (const [radius, z] of [[36.2,46.3],[34.8,45.4],[33.5,44.5],[32.2,43.7]]) {
+    part(new RingGeometry(radius-.55, radius, 96), blackMetal, 0, 0, z, barrel);
+  }
+  const frontElement = material('#c2caca', .05, .09, {
+    transparent: true, opacity: .055, depthWrite: false, iridescence: .65,
+    iridescenceThicknessRange: [240,390], clearcoat: 1, clearcoatRoughness: .07
+  });
+  part(coatedOptic(), frontElement, 0, 0, 44.6, barrel);
   const lensMarkings = labelTexture(256, 256, (ctx) => {
     ctx.translate(128, 128);
     ctx.fillStyle = '#ddd9cd';
@@ -268,6 +307,13 @@ export function createRangefinder() {
     });
     part(new PlaneGeometry(radius * 1.65, radius * 1.65), lettering.clone(), 0, 0, 5.65, dial).material.map = marks;
   }
+  const shutter = new Group();
+  shutter.position.set(-48,65,7);
+  shutter.rotation.x = -Math.PI/2;
+  model.add(shutter);
+  part(disc(7.4,2), blackMetal, 0,0,0, shutter);
+  part(disc(6,3.5), chrome, 0,0,2, shutter);
+  part(disc(3,.6), silver, 0,0,4, shutter);
   part(disc(5.5, 2), chrome, -71, 44, 23);
   part(disc(1.8, 1), material('#744a25', .65, .39), -68, 37, 22);
 

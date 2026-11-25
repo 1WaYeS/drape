@@ -39,9 +39,9 @@ function shadowTexture(image, blur) {
 
 function makeShadows(image, width, height, thickness, camera = false) {
   const layers = [
-    [8.5 + thickness * .13, .30, 1.48],
-    [3.8 + thickness * .075, .51, .83],
-    [1.5, .71, .21]
+    [5 + thickness * .24, .36, 1.1],
+    [2.5 + thickness * .1, .40, .55],
+    [.8, .76, .1]
   ];
   return layers.map(([blur, opacity, spread], index) => {
     const mesh = new Mesh(plane, new MeshBasicMaterial({
@@ -79,9 +79,9 @@ export async function createStudio(floor, pieces, cameraPiece, draw) {
   const cameraWorld = new Scene();
   const view = new OrthographicCamera(0, 0, 0, 0, 1, 4000);
   view.position.z = 1500;
-  const sun = new DirectionalLight(0xffeedc, 3.2);
+  const sun = new DirectionalLight(0xffeedc, 1.6);
   sun.position.set(-420, 520, 740);
-  const fill = new DirectionalLight(0xb9c7ec, 1.1);
+  const fill = new DirectionalLight(0xc7d5e2, .55);
   fill.position.set(550, -220, 650);
   const reflection = studioReflections();
   cameraWorld.environment = reflection;
@@ -138,10 +138,10 @@ export async function createStudio(floor, pieces, cameraPiece, draw) {
     hem.renderOrder = surface.renderOrder - .1;
     object.add(hem);
     object.add(surface);
-    for (const { mesh, spread } of makeShadows(photo.image, width, height, stack > 7 ? 9 : 5)) {
+    for (const { mesh, spread } of makeShadows(photo.image, width, height, (/denim|jean|knit|polo/i.test(piece.file) ? 9 : 5) + Math.max(0, stack) * .3)) {
       const anchor = new Group();
       anchor.position.copy(mesh.position);
-      if (stack > 7) {
+      if (stack > 0) {
         // Raised pieces cast their tighter shadow on the textile below.
         mesh.renderOrder = surface.renderOrder - 1;
         anchor.position.x *= .88;
@@ -241,12 +241,12 @@ export async function createStudio(floor, pieces, cameraPiece, draw) {
       const approach = smooth(0, .40, progress);
       const turn = smooth(.22, .65, progress);
       const dock = destination ? smooth(.66, .96, progress) : 0;
-      const lift = hover * 13 + approach * 23;
+      const lift = hover * 16 + approach * 23;
       model.position.copy(root);
       model.position.y += hover * 7 + approach * 12;
       model.position.z += lift;
-      const zoom = mix(1.12 + hover * .015, 1.82, approach);
-      hoverRotation.setFromEuler(new Euler(-pointer.y * hover * .19, pointer.x * hover * .22, 0));
+      const zoom = mix(1.12, 1.82, approach);
+      hoverRotation.setFromEuler(new Euler(-pointer.y * hover * .093, pointer.x * hover * .093, 0));
       model.quaternion.copy(rest).multiply(hoverRotation).slerp(rear, turn).slerp(portrait, dock);
       if (destination) {
         model.position.x = mix(model.position.x, panX + destination.x, dock);
@@ -300,8 +300,9 @@ const LIGHT = /* glsl */ `
     vec2 q = p-vec2(-650., 465.);
     float panel = dot(q, vec2(.39,.92));
     float falloff = exp(-dot(q/vec2(1030.,580.),q/vec2(1030.,580.)));
-    float bars = smoothstep(-.72,.45,cos(panel*.063+.52*sin(p.x*.002)));
-    return falloff*(.16+.56*bars);
+    float window = 1.-smoothstep(280.,515.,abs(panel));
+    float frame = smoothstep(4.,48.,abs(panel-75.))*smoothstep(6.,58.,abs(panel+164.));
+    return falloff*window*(.24+.55*frame);
   }
 `;
 
@@ -326,7 +327,7 @@ const GROUND = /* glsl */ `
     float pores = pow(max(0., 1.-noise(p/4.6)), 10.)*.033;
     float detail = 1.-smoothstep(1.4,4.,length(fwidth(p)));
     float sun = studioLight(p);
-    gl_FragColor = vec4(max(stone*(.89+sun*1.75)+stain+(grit-pores)*detail+sun*vec3(.17,.106,.062),0.),1.);
+    gl_FragColor = vec4(mix(vec3(.35,.325,.302),stone,.39)+stain*.4+(grit-pores)*detail*.15+sun*vec3(.21,.177,.14),1.);
     #include <colorspace_fragment>
   }
 `;
@@ -363,7 +364,7 @@ const GARMENT = /* glsl */ `
       vec2 slope = vec2(relief(imageUV+dx)-relief(imageUV-dx), relief(imageUV+dy)-relief(imageUV-dy));
       vec3 normal = normalize(vec3(-slope*3.1,1.));
       float shape = dot(normal,normalize(vec3(localSun,1.1)))-.74;
-      float textile = .99+shape*.34+sun*.32;
+      float textile = .99+shape*.18+sun*.12;
       vec3 colour = garment.rgb*textile+sun*vec3(.014,.008,.003);
       gl_FragColor = vec4(colour,garment.a);
     }

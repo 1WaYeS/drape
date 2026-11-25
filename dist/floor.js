@@ -104,6 +104,8 @@ export function setupFloor(catalog, selectGarment, openRoom, finishRoom, fireFla
   let hoverTarget = 0;
   let hoverVelocity = 0;
   let lastFrame = 0;
+  const tilt = { x: 0, y: 0 };
+  const tiltVelocity = { x: 0, y: 0 };
   const pointer = { x: 0, y: 0 };
   let scale = 1;
   let width = 0;
@@ -166,11 +168,23 @@ export function setupFloor(catalog, selectGarment, openRoom, finishRoom, fireFla
       hover = hoverTarget;
       hoverVelocity = 0;
     }
+    let tilting = false;
+    for (const axis of ['x', 'y']) {
+      const target = hoverTarget ? pointer[axis] : 0;
+      const delta = tilt[axis] - target;
+      const speed = tiltVelocity[axis] + frequency * delta;
+      tilt[axis] = target + (delta + speed * dt) * decay;
+      tiltVelocity[axis] = (tiltVelocity[axis] - frequency * speed * dt) * decay;
+      if (reduced.matches || Math.abs(delta) + Math.abs(tiltVelocity[axis]) < .002) {
+        tilt[axis] = target;
+        tiltVelocity[axis] = 0;
+      } else tilting = true;
+    }
     scene.style.transform = 'translate(' + (-x * scale) + 'px,' + (-y * scale) + 'px) scale(' + scale + ')';
     floor.style.setProperty('--floor-x', -x * scale + 'px');
     floor.style.setProperty('--floor-y', -y * scale + 'px');
     floor.classList.toggle('camera-hovered', hover > .08);
-    if (width && height && !floor.closest('[hidden]')) studio?.render(x, y, hover, pointer, progress, destination);
+    if (width && height && !floor.closest('[hidden]')) studio?.render(x, y, hover, tilt, progress, destination);
     if (transition && progress === 1) {
       transition = null;
       hover = hoverTarget = 0;
@@ -180,7 +194,7 @@ export function setupFloor(catalog, selectGarment, openRoom, finishRoom, fireFla
       studio?.dock(document.querySelector('.camera-back'));
       finishRoom();
     }
-    if (spring || transition || hover !== hoverTarget) requestDraw();
+    if (tilting || spring || transition || hover !== hoverTarget) requestDraw();
   }
 
   function resize() {
