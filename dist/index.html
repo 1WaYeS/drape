@@ -6,66 +6,49 @@
 <meta name="description" content="A live virtual fitting room for independent Bangladesh fashion.">
 <title>DЯAPE — Live Try-On</title>
 <link rel="stylesheet" href="style.css"><link rel="stylesheet" href="floor.css">
-<link rel="preload" href="assets/studio/pack-cement-0.webp" as="image">
-<link rel="preload" href="assets/studio/pack-maroon-knit-polo.webp" as="image">
-<link rel="modulepreload" href="studio.js">
-<script type="module" src="app.js"></script>
-</head>
+<link rel="stylesheet" href="gravity.css"><link rel="preload" href="assets/zero/camera.webp" as="image"><script type="module" src="gravity.js"></script><script type="module" src="navigation.js"></script><link rel="stylesheet" href="fitting.css"></head>
 <body>
 <header class="flat-header">
   <a class="flat-logo" href="./" aria-label="Drape home"><img src="assets/wordmark.png" alt="DЯAPE"></a>
   <nav aria-label="Main navigation">
     <button type="button" data-info="about">About</button>
     <button type="button" data-info="brands">For Brands</button>
-    <button type="button" data-info="menu">Menu</button>
+    <button type="button" data-info="contact">Contact Us</button>
   </nav>
 </header>
-<main id="home" class="flat-home">
-  <h1 class="visually-hidden">Drape virtual fitting room</h1>
-  <div id="floor" class="floor" aria-label="Garments arranged on a concrete floor">
-    <div class="floor-scene" id="floor-scene">
-      <div id="floor-garments"></div>
-      <button type="button" class="scene-camera" id="scene-camera" aria-label="Try on live">
-        <span class="camera-cutout" aria-hidden="true"></span>
-      </button>
-      <button type="button" class="camera-caption">Try on live</button>
-    </div>
-  </div>
-  <p class="drag-note" aria-hidden="true">☝︎ <span>Drag to explore</span></p>
-  <aside class="hover-label" id="hover-label" hidden>
-    <strong></strong><span></span><small></small>
-  </aside>
-</main>
-<dialog class="flat-info" id="flat-info">
-  <form method="dialog"><button class="outline">Close</button></form>
-  <h2></h2><p></p><button class="pill primary" data-open>Try on live</button>
-</dialog>
-<section id="room" hidden aria-labelledby="room-heading">
-  <div class="room-top"><button class="outline" id="back">Back to the edit</button><h1 id="room-heading" tabindex="-1">Fitting room</h1></div>
-  <div class="room-grid">
-    <div class="mirror-column">
-      <div class="camera-back">
-        <div class="camera-brand">DRAPE <span>LIVE VIEW</span></div>
-        <div class="view">
-          <video id="mirror" autoplay playsinline muted hidden></video>
-          <div id="standby"><span class="focus-box"></span><p>Your mirror is ready</p><button class="pill primary" id="start">Enable camera</button></div>
-          <span id="view-label" class="view-label" hidden></span>
-        </div>
-        <div class="camera-base"><span>DRAPE / LIVE FITTING</span><button class="outline" id="stop" hidden>Turn camera off</button></div>
+<main id="space" aria-label="Zero-gravity fashion collection"></main>
+<p class="explore">✥ &nbsp; Drag to explore</p>
+<aside id="detail" role="tooltip"><small>Demo collection ↗</small><strong></strong><span></span></aside>
+<dialog id="info" aria-labelledby="info-title"><form method="dialog" class="info-close"><button>Close</button></form><div class="info-copy"></div></dialog><dialog id="fitting" aria-label="Virtual fitting room">
+  <div class="camera-stage">
+    <div class="camera-rear">
+      <img class="hardware" src="assets/zero/camera-rear-frame.png" alt="">
+      <div class="lcd">
+        <div class="lcd-nav"><button data-action="close">← Back to the edit</button><button data-action="playback">Playback</button></div>
+        <section class="preview" aria-label="Camera preview">
+          <video autoplay muted playsinline hidden></video><img class="uploaded" alt="Uploaded preview" hidden>
+          <span class="live-indicator">● LIVE TRY-ON PROTOTYPE</span>
+          <div class="reticle" aria-hidden="true"></div>
+          <div class="preview-tools">
+            <button data-action="webcam">Enable camera</button><button data-action="switch" disabled>Switch camera</button>
+            <button data-action="capture" disabled>Capture</button><button data-action="expand" aria-pressed="false">Expand</button>
+            <label class="file-control">Upload<input type="file" accept="image/*"></label>
+          </div>
+        </section>
+        <section class="wardrobe-panel" aria-label="Wardrobe">
+          <div class="filter-bar"><select class="brands" aria-label="Filter by brand"></select><div class="filters" aria-label="Categories"></div></div>
+          <div class="catalogue"></div>
+          <p class="catalogue-note">Try On prototype</p>
+          <div class="services">
+            <button data-action="size">Find My Size<small>Discover your perfect fit</small></button>
+            <button data-action="look">Complete the Look<small>Build your complete outfit</small></button>
+          </div>
+        </section>
+        <section class="camera-panel" hidden aria-label="Camera tools"></section>
+        <p class="room-status" role="status"></p>
       </div>
-      <p id="status" role="status">Enable your camera when you’re ready. Live try-on sends your video to Decart.</p>
     </div>
-    <aside class="wardrobe">
-      <h2>Pick a piece.</h2>
-      <div id="garments" class="garments" aria-label="Garments available for try-on" tabindex="0"></div>
-      <label class="upload">Upload a garment<input type="file" id="upload" accept="image/jpeg,image/png,image/webp"></label>
-      <p id="selection" aria-live="polite"></p>
-      <div class="tools"><button class="outline" id="size">Find My Size</button><button class="outline" id="style">Complete the Look</button></div>
-      <div id="tool-panel" hidden></div>
-    </aside>
   </div>
-</section>
-<div id="flash" aria-hidden="true"></div>
-</body>
-</html>
-
+  <div class="shutter-flash" aria-hidden="true"></div>
+</dialog>
+</body></html>

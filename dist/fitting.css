@@ -1,0 +1,64 @@
+#fitting{position:fixed;inset:0;width:100%;height:100%;max-width:none;max-height:none;margin:0;padding:0;border:0;background:transparent;color:#f5f0eb;overflow:hidden;font:clamp(10px,1vw,15px) system-ui}
+#fitting::backdrop{background:#08060566;backdrop-filter:blur(16px);opacity:0;transition:opacity .7s}
+#fitting.entered::backdrop{opacity:1}
+.camera-stage{position:absolute;left:50%;top:50%;width:min(98vw,164vh);aspect-ratio:1672/941;perspective:1500px;translate:-50% -50%}
+.camera-rear{display:block}
+.lcd{position:absolute;inset:26.4% 16.69% 12.61% 14.26%;background:#100e0d;border-radius:2.5%;overflow:hidden;display:grid;grid-template-columns:57% 43%;padding:1%;gap:0;opacity:0;transition:opacity .25s}
+.ready .lcd{opacity:1}
+.preview{position:relative;min-width:0;overflow:hidden;border-radius:8px;background:radial-gradient(ellipse at center,#40352c,#15110f);display:grid;place-items:center}
+.preview :is(video,.uploaded){position:absolute;width:100%;height:100%;inset:0;object-fit:contain}
+.preview video{scale:-1 1}
+.live-indicator{position:absolute;top:4%;left:4%;font-size:.77em;letter-spacing:.08em;background:#000b;padding:.35em .6em;border-radius:20px}
+.reticle{position:absolute;inset:21% 22%;border:1px solid #fff6;border-radius:10px;pointer-events:none}
+.preview-tools{position:absolute;bottom:4%;display:flex;justify-content:center;gap:.35em;flex-wrap:wrap;width:96%}
+#fitting button,.file-control{color:inherit;background:#28221f;border:1px solid #ffffff38;border-radius:8px;padding:.45em .65em;font:inherit;cursor:pointer}
+#fitting button:disabled{opacity:.45;cursor:default}
+.file-control{position:relative}.file-control input{position:absolute;inset:0;width:100%;opacity:0;cursor:pointer}
+.wardrobe-panel{padding:0 0 0 4%;min-height:0;display:grid;grid-template-rows:auto minmax(0,1fr) auto auto;gap:.4em}
+.filters,.services{display:flex;gap:.35em;overflow:auto;scrollbar-width:thin}.filters button{white-space:nowrap}
+.catalogue{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:.55em;grid-auto-rows:max-content;align-content:start;overflow-y:auto;scrollbar-width:thin;min-height:0}
+#fitting [aria-pressed=true]{border-color:white;background:#4b4038}
+.services button{flex:1;text-align:left}.services small{display:block;opacity:.7}
+.camera-panel{position:absolute;inset:0;background:#171310;padding:4%;overflow:auto;z-index:2}.camera-panel h2{margin:.35em 0}.camera-panel form{display:grid;grid-template-columns:repeat(2,1fr);gap:.5em}.camera-panel label{display:grid;gap:.2em}.camera-panel :is(input,select){background:#29221e;color:white;padding:.4em;border:1px solid #777}.camera-panel img{max-width:100%;max-height:17vh}.camera-panel output{display:block;margin-top:.6em}
+.expanded .lcd{grid-template-columns:1fr}.expanded .wardrobe-panel{display:none}
+.shutter-flash{position:fixed;inset:0;background:white;opacity:0;pointer-events:none}
+@media(max-aspect-ratio:1/1){
+ .camera-stage{width:99vw;top:33%}.lcd{inset:26.4% 16.69% 12.61% 14.26%;overflow:visible;grid-template-columns:1fr}
+ .wardrobe-panel{position:fixed;top:108%;left:-17%;width:134%;height:47vh;padding:3%;border:1px solid #ffffff35;border-radius:12px;background:#171310}
+ .camera-panel{inset:105% -17% auto;height:47vh;border-radius:12px}
+ .preview-tools{bottom:2%}.live-indicator{top:2%}
+}
+@media(prefers-reduced-motion:reduce){#fitting::backdrop,.lcd{transition:none}}
+
+#fitting::backdrop,.lcd{transition:none}
+.camera-stage{width:min(100vw,174dvh)}
+.camera-rear{position:absolute;inset:0;visibility:hidden}
+.ready .camera-rear{visibility:visible}
+.hardware{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;pointer-events:none}
+.lcd{grid-template-rows:auto minmax(0,1fr);gap:.5em}
+.lcd-nav{grid-column:1/-1;display:flex;justify-content:space-between}
+.filter-bar{min-width:0;display:grid;gap:.3em}
+.brands{justify-self:start;color:inherit;background:#28221f;border:1px solid #ffffff38;border-radius:6px;font:inherit;padding:.25em}
+.shutter-flash{z-index:20}
+@media(max-aspect-ratio:1/1){.camera-stage{width:99vw}.wardrobe-panel{top:108%}}
+
+.product-card{min-width:0;overflow:hidden;border-radius:8px;background:#181513;border:1px solid #ffffff24}
+.product-card:has([aria-pressed=true]){border-color:#fffd}
+#fitting .product-photo{position:relative;display:block;width:100%;aspect-ratio:3/4;overflow:hidden;padding:0;border:0;border-radius:0;background:#222}
+.product-photo img{display:block;width:100%;height:100%;object-fit:cover;scale:1.09}
+.product-photo[aria-pressed=true]::after{content:'✓';position:absolute;top:.5em;right:.5em;display:grid;place-items:center;width:1.5em;height:1.5em;background:#f5f0eb;color:#14110f;border-radius:50%}
+.product-meta{display:grid;gap:.15em;padding:.35em .5em;font-size:.87em;line-height:1.24}
+.product-meta small,.catalogue-note{color:#cec3b9}
+.product-meta a{color:inherit;text-decoration:none}.product-meta a:hover{text-decoration:underline}
+.product-actions{display:flex;align-items:center;justify-content:space-between;gap:.25em}
+#fitting .product-actions button{padding:.28em .48em;white-space:nowrap}
+.catalogue-note{margin:0;font-size:.76em}
+@property --flash-reach {
+  syntax: '<length>';
+  initial-value: 0px;
+  inherits: false;
+}
+.shutter-flash {
+  background: radial-gradient(circle at var(--flash-x, 50%) var(--flash-y, 50%),
+    white 0, white calc(var(--flash-reach) * .78), #fff9 calc(var(--flash-reach) + 16px), transparent calc(var(--flash-reach) + 58px));
+}

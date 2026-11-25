@@ -213,3 +213,74 @@ body.in-room { background: #211b18 radial-gradient(ellipse at 16% 14%, #5c493c, 
 }
 
 @media (hover: none) { .camera-caption { opacity: 1; } }
+
+
+/* Pan across the full editorial artwork, including the pieces outside its opening crop. */
+.floor { container-type: size; }
+.home-editorial {
+  position: absolute;
+  z-index: 1;
+  left: 50%;
+  top: 50%;
+  width: 127.34%;
+  height: 126.14%;
+  max-width: none;
+  transform: translate(calc(-50% + var(--art-x, 0px)), calc(-50% + var(--art-y, 0px)));
+  pointer-events: none;
+}
+.floor.has-flashed .home-editorial { opacity: 0; }
+.floor-scene { z-index: 2; }
+.floor:not(.is-entering) .scene-camera {
+  left: calc((-.027 * 100cqw + var(--art-x, 0px)) / var(--scene-scale, 1)) !important;
+  top: calc((-.032 * 100cqh + var(--art-y, 0px)) / var(--scene-scale, 1)) !important;
+  width: calc(.26 * 100cqw / var(--scene-scale, 1)) !important;
+  height: calc(.33 * 100cqh / var(--scene-scale, 1)) !important;
+}
+.floor:not(.is-entering) .floor-scene { transform: scale(var(--scene-scale, 1)) !important; }
+.floor:not(.is-entering) :is(.floor-garment, .camera-caption) { visibility: hidden; }
+.flat-home .drag-note { opacity: 0; }
+body:has(.flat-home:not([hidden]) .floor:not(.is-entering)) .flat-header {
+  color: transparent;
+  background: transparent;
+}
+body:has(.flat-home:not([hidden]) .floor:not(.is-entering)) .flat-logo img { opacity: 0; }
+
+.editorial-camera {
+  position: absolute;
+  z-index: 1;
+  left: calc(47.02% + var(--art-x, 0px));
+  top: calc(46.91% + var(--art-y, 0px));
+  width: 26.66%;
+  height: 34.45%;
+  max-width: none;
+  pointer-events: none;
+  opacity: var(--camera-lift, 0);
+  transform: translate(-50%, calc(-50% - 1.3cqw * var(--camera-lift, 0)))
+    perspective(700px) rotateX(var(--camera-pitch, 0deg)) rotateY(var(--camera-yaw, 0deg))
+    scale(calc(1 + .045 * var(--camera-lift, 0)));
+  filter: drop-shadow(5px 12px 10px #1b100bb3);
+}
+.floor.is-entering .editorial-camera { opacity: 0; }
+#flash { z-index: 100; }
+@keyframes flash { 12%, 24% { opacity: 1; } 100% { opacity: 0; } }
+.in-room {
+  background: linear-gradient(#1b1410ba, #161210dd), url('assets/studio/home-editorial.webp') center / cover fixed;
+}
+#room { max-width: 1300px; }
+#room .room-top h1 { font-size: clamp(1.5rem, 3vw, 2.8rem); }
+#room .room-grid {
+  padding: clamp(1rem, 3vw, 2rem);
+  border: 4px solid #afa298;
+  border-top-color: #e3d8ce;
+  border-radius: clamp(1rem, 3vw, 2rem);
+  background: linear-gradient(150deg, #312824, #171412 55%, #29221e);
+  box-shadow: inset 0 0 0 3px #0e0c0b, 0 18px 60px #0009;
+  gap: clamp(1rem, 2vw, 2rem);
+}
+#room .wardrobe h2 { font-size: clamp(1.4rem, 2.5vw, 2.4rem); }
+#room .garment { background: #342c27; border-radius: .7rem; }
+#room .garment img { background: #cdbdad; }
+@media (min-width: 761px) {
+  #room .room-grid { grid-template-columns: minmax(0, 1fr) minmax(0, 1.25fr); }
+  #room .garments { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}

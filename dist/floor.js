@@ -1,3 +1,4 @@
+import { folds } from './fold-textures.js';
 import { textures } from './studio-textures.js';
 import { packTextures } from './pack-textures.js';
 
@@ -25,16 +26,16 @@ export const extraGarments = [
 
 
 const studioEdit = {
-  'maroon-knit-polo': ['Maroon Knit Polo', -614, -237, 363, -16, 18],
-  'black-graphic-tee': ['Black Graphic Tee', -442, -163, 338, 21, 0],
-  'plaid-shirt': ['Plaid Shirt', 14, -410, 363, 38, 1],
-  'blue-knit-polo': ['Blue Cable Knit Polo', 332, -337, 280, 28, 2],
-  'brown-knit-polo': ['Brown Knit Polo', 627, -163, 272, -18, 0],
-  'brown-jacket': ['Brown Jacket', 748, 76, 324, 17, 14],
-  'cream-knit-polo': ['Cream Knit Polo', -805, 94, 289, 13, 2],
-  'washed-graphic-tee': ['Washed Graphic Tee', -508, 297, 355, 24, 1],
-  'blue-denim': ['Blue Denim', -25, 316, 409, 26, 2, true],
-  'brown-jeans': ['Brown Jeans', 510, 418, 392, 14, 3, true],
+  'maroon-knit-polo': ['Maroon Knit Polo', -1065, -505, 363, -16, 18],
+  'black-graphic-tee': ['Black Graphic Tee', 1220, -177, 338, 21, 0],
+  'plaid-shirt': ['Plaid Shirt', -166, -1010, 363, 38, 1],
+  'blue-knit-polo': ['Blue Cable Knit Polo', 115, -776, 280, 28, 2],
+  'brown-knit-polo': ['Brown Knit Polo', 686, -665, 272, -18, 0],
+  'brown-jacket': ['Brown Jacket', 1215, 196, 324, 17, 14],
+  'cream-knit-polo': ['Cream Knit Polo', -1230, -180, 289, 13, 2],
+  'washed-graphic-tee': ['Washed Graphic Tee', -202, 706, 355, 24, 1],
+  'blue-denim': ['Blue Denim', 1160, 574, 409, 26, 2, true],
+  'brown-jeans': ['Brown Jeans', 252, 1046, 392, 14, 3, true],
   'charcoal-graphic-tee': ['Charcoal Graphic Tee', 1110, -478, 345, -14, 1]
 };
 
@@ -44,11 +45,11 @@ export const studioGarments = Object.entries(studioEdit).map(([id, [name,,,,,,bo
 }));
 
 const exploration = {
-  maroon: [-1065,-505,325,-15], green: [686,-665,322,21],
-  flight: [1220,-177,322,-12], coast: [-166,-1053,322,26],
-  cornflower: [115,-776,298,-14], stripe: [1215,196,316,-15],
-  pearl: [-1230,-180,320,15], fig: [-202,706,310,12],
-  yard: [1160,574,342,-49], stallion: [252,1046,335,41],
+  maroon: [-430, -240, 370, -17, 6], green: [-590, 40, 342, -23],
+  flight: [-45, -288, 325, 13], coast: [-166,-1053,322,26],
+  cornflower: [605, -85, 345, 20], stripe: [335, 222, 365, 16],
+  pearl: [294, -275, 305, 19], fig: [-603, 335, 325, -12],
+  yard: [-171, 312, 380, 19], stallion: [678, 338, 324, 13],
   zigzag: [-287,-735,320,11], plum: [-1200,210,325,-19],
   cream: [229,-1082,292,23], brown: [245,694,329,-13],
   anchor: [-1100,640,340,34], ash: [912,395,298,-22],
@@ -61,7 +62,7 @@ const prices = {
   plum: 1399, cream: 1349, anchor: 1899, ash: 1699, forest: 1599, wrath: 1399
 };
 const amount = new Intl.NumberFormat('en-BD');
-const cameraPiece = { x: 93, y: -40, width: 265, height: 191, angle: -.32 };
+const cameraPiece = { x: -12, y: -8, width: 265, height: 191, angle: -.32 };
 const bounds = { x: 1060, y: 582 };
 const limit = (value, max) => Math.max(-max, Math.min(max, value));
 
@@ -142,6 +143,7 @@ export function setupFloor(catalog, selectGarment, openRoom, finishRoom, fireFla
       progress = Math.min((now - transition.started) / 1250, 1);
       if (progress >= .24 && !transition.flashed) {
         transition.flashed = true;
+        floor.classList.add('has-flashed');
         fireFlash();
       }
       if (progress >= .65 && !transition.roomOpened) {
@@ -183,6 +185,11 @@ export function setupFloor(catalog, selectGarment, openRoom, finishRoom, fireFla
     scene.style.transform = 'translate(' + (-x * scale) + 'px,' + (-y * scale) + 'px) scale(' + scale + ')';
     floor.style.setProperty('--floor-x', -x * scale + 'px');
     floor.style.setProperty('--floor-y', -y * scale + 'px');
+    floor.style.setProperty('--art-x', -x / bounds.x * width * .133 + 'px');
+    floor.style.setProperty('--art-y', -y / bounds.y * height * .128 + 'px');
+    floor.style.setProperty('--camera-lift', hover);
+    floor.style.setProperty('--camera-pitch', -tilt.y * hover * 7 + 'deg');
+    floor.style.setProperty('--camera-yaw', tilt.x * hover * 7 + 'deg');
     floor.classList.toggle('camera-hovered', hover > .08);
     if (width && height && !floor.closest('[hidden]')) studio?.render(x, y, hover, tilt, progress, destination);
     if (transition && progress === 1) {
@@ -190,7 +197,7 @@ export function setupFloor(catalog, selectGarment, openRoom, finishRoom, fireFla
       hover = hoverTarget = 0;
       hoverVelocity = 0;
       x = y = 0;
-      floor.classList.remove('is-entering');
+      floor.classList.remove('is-entering', 'has-flashed');
       studio?.dock(document.querySelector('.camera-back'));
       finishRoom();
     }
@@ -204,6 +211,7 @@ export function setupFloor(catalog, selectGarment, openRoom, finishRoom, fireFla
     scale = width / height < .87
       ? Math.max(width / 1260, height / 1350)
       : Math.max(width / 1672, height / 970);
+    floor.style.setProperty('--scene-scale', scale);
     const narrow = width / scale < 680;
     cameraCaption.style.left = (narrow ? cameraPiece.x - 54 : cameraPiece.x + cameraPiece.width * .51) + 'px';
     cameraCaption.style.top = (cameraPiece.y + (narrow ? cameraPiece.height * .54 : 18)) + 'px';
@@ -241,8 +249,9 @@ export function setupFloor(catalog, selectGarment, openRoom, finishRoom, fireFla
   const pieces = catalog.map((garment) => {
     const placement = garment.studioAsset ? studioEdit[garment.studioAsset].slice(1) : exploration[garment.file];
     const [x, y, width, angle, stack = 0] = placement;
-    const { aspect, outline } = garment.studioAsset ? packTextures[garment.studioAsset] : textures[garment.file];
-    const piece = { file: garment.file, x, y, width, height: width / aspect, angle: angle * Math.PI / 180, stack };
+    const { aspect, outline } = garment.studioAsset ? packTextures[garment.studioAsset] : (folds[garment.file] ?? textures[garment.file]);
+    const file = folds[garment.file] ? 'fold-' + garment.file : garment.file;
+    const piece = { file, x, y, width, height: width / aspect, angle: angle * Math.PI / 180, stack };
     const button = document.createElement('button');
     button.type = 'button';
     button.className = 'floor-garment';
@@ -252,7 +261,7 @@ export function setupFloor(catalog, selectGarment, openRoom, finishRoom, fireFla
       : garment.name);
     const cutout = document.createElement('span');
     cutout.className = 'garment-cutout';
-    cutout.style.backgroundImage = 'url(assets/studio/' + garment.file + '.webp)';
+    cutout.style.backgroundImage = 'url(assets/studio/' + file + '.webp)';
     const hitArea = document.createElement('span');
     hitArea.className = 'garment-hit';
     hitArea.style.clipPath = 'polygon(' + outline + ')';
