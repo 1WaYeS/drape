@@ -2,6 +2,6 @@
   "name": "drape-fitting-edit",
   "private": true,
   "type": "module",
-  "scripts": { "start": "node server.js", "check": "node --check dist/app.js && node --check server.js" },
+  "scripts": { "start": "node server.js", "check": "node --check dist/app.js && node --check dist/floor.js && node --check dist/studio.js && node --check dist/studio-textures.js && node --check server.js" },
   "dependencies": { "@decartai/sdk": "0.2.14" }
 }

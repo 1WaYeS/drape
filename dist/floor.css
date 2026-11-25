@@ -35,62 +35,67 @@
 .flat-header button:hover { text-decoration: underline; text-underline-offset: .25em; }
 .flat-home, .floor { position: fixed; inset: 0; overflow: hidden; }
 .floor {
-  display: grid;
-  place-items: center;
-  background: #8e8b89 url('assets/floor-backdrop.jpg') center / cover;
+  background-color: #a6a098;
+  background-image: linear-gradient(135deg, #fff0dc35, #30251e24), url('assets/studio/cement.webp');
+  background-position: center, var(--floor-x, 0px) var(--floor-y, 0px);
+  background-size: cover, 530px 530px;
   cursor: grab;
   touch-action: none;
   user-select: none;
+  overflow: clip;
 }
+.studio-canvas { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
+.floor:not(.has-studio) .studio-canvas { visibility: hidden; }
 .floor-scene {
-  width: max(100vw, 177.683svh);
-  aspect-ratio: 1672 / 941;
   position: absolute;
-  background: url('assets/flat-floor.jpg') center / 100% 100% no-repeat;
-  will-change: transform;
+  left: 50%;
+  top: 50%;
+  transform-origin: 0 0;
+  width: 0;
+  height: 0;
 }
 .floor.is-dragging, .floor.is-dragging * { cursor: grabbing; }
-.floor-garment {
+.floor-garment, .scene-camera {
   position: absolute;
-  border: 0;
-  background: transparent;
-  transition: background-color 160ms ease;
-}
-.floor-garment:is(:hover, :focus-visible, [aria-pressed=true]) {
-  background-color: #fff2;
-}
-.floor.is-dragging .floor-garment { background: transparent; }
-.scene-camera {
-  position: absolute;
-  left: 47.13%;
-  top: 35.07%;
-  width: 17.59%;
-  height: 24.76%;
-  background: transparent;
-  border: 0;
+  translate: -50% -50%;
   padding: 0;
-  perspective: 750px;
-  filter: drop-shadow(4px 7px 5px #0006);
+  border: 0;
+  background: transparent;
+  pointer-events: none;
 }
-.camera-cutout {
+.garment-cutout, .garment-hit, .camera-cutout {
   position: absolute;
   inset: 0;
-  background: url('assets/floor-camera.jpg') center / 100% 100% no-repeat;
+  background-size: 100% 100%;
+  background-repeat: no-repeat;
+}
+.garment-hit, .camera-cutout { pointer-events: auto; }
+.floor-garment:focus-visible .garment-hit { background: #fff3; }
+.garment-cutout, .scene-camera { filter: drop-shadow(3px 4px 3px #251c196e) drop-shadow(8px 11px 8px #271f1a3f); }
+.has-studio .garment-cutout { visibility: hidden; }
+.has-studio .scene-camera { filter: none; }
+.has-studio .camera-cutout { opacity: 0; }
+.scene-camera { z-index: 1; perspective: 750px; }
+.camera-cutout {
+  background-image: url('assets/studio/camera.webp');
   clip-path: polygon(0% 56%, 3% 41%, 73% 1%, 77% 0%, 81% 3%, 85% 11%, 88% 15%, 94% 38%, 99% 60%, 99% 64%, 23% 100%, 19% 97%, 4% 64%);
-  transition: transform 260ms cubic-bezier(.2,.7,.2,1), filter 260ms;
+  transform: translateY(calc(var(--lift, 0) * -8%))
+    rotateX(calc(var(--flip, 0) * 180deg - var(--lift, 0) * 17deg))
+    rotateY(calc(var(--lift, 0) * 13deg))
+    rotateZ(calc(var(--lift, 0) * -4deg))
+    scale(calc(1 + var(--flip, 0) * .23 + var(--lift, 0) * .06));
+  transition: filter 220ms ease;
 }
 .scene-camera:is(:hover, :focus-visible) .camera-cutout,
 .scene-camera:has(+ .camera-caption:hover) .camera-cutout {
-  transform: translateY(-8%) rotateX(-17deg) rotateY(13deg) rotateZ(-4deg) scale(1.06);
   filter: brightness(1.14);
 }
 .camera-caption {
   position: absolute;
-  left: 64.5%;
-  top: 42.6%;
+  z-index: 2;
   border-radius: .4rem;
   color: #131210;
-  font-size: clamp(.85rem, 1.3vw, 1.25rem);
+  font-size: 21px;
 }
 .camera-caption:is(:hover, :focus-visible), .scene-camera:hover + .camera-caption {
   background: #f4f2efd9;
@@ -148,8 +153,6 @@ body.in-room { background: #1e1b19 url('assets/floor-backdrop.jpg') center / cov
 }
 .garments { overflow-y: auto; max-height: min(42vh, 420px); padding: 2px 8px 2px 2px; scrollbar-color: #eee #393735; scrollbar-width: thin; }
 @media (max-aspect-ratio: 5/4) {
-  .floor-scene { width: max(100vw, 154svh); height: 100svh; }
-  .camera-caption { left: 63.5%; top: 43%; }
   .flat-header { background: linear-gradient(#e4e1d8ac, transparent); }
   .in-room .flat-header { background: linear-gradient(#1e1917ad, transparent); }
 }

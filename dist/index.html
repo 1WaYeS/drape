@@ -6,6 +6,9 @@
 <meta name="description" content="A live virtual fitting room for independent Bangladesh fashion.">
 <title>DЯAPE — Live Try-On</title>
 <link rel="stylesheet" href="style.css"><link rel="stylesheet" href="floor.css">
+<link rel="preload" href="assets/studio/cement.webp" as="image">
+<link rel="preload" href="assets/studio/camera.webp" as="image">
+<link rel="modulepreload" href="studio.js">
 <script type="module" src="app.js"></script>
 </head>
 <body>
@@ -25,7 +28,7 @@
       <button type="button" class="scene-camera" id="scene-camera" aria-label="Try on live">
         <span class="camera-cutout" aria-hidden="true"></span>
       </button>
-      <button type="button" class="camera-caption" data-open>Try on live</button>
+      <button type="button" class="camera-caption">Try on live</button>
     </div>
   </div>
   <p class="drag-note" aria-hidden="true">☝︎ <span>Drag to explore</span></p>

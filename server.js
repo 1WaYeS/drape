@@ -12,7 +12,7 @@ const model = 'lucy-vton-3.6';
 const client = process.env.DECART_API_KEY
   ? createDecartClient({ apiKey: process.env.DECART_API_KEY }) : null;
 const mime = { '.html': 'text/html; charset=utf-8', '.css': 'text/css', '.js': 'text/javascript',
-  '.jpg': 'image/jpeg', '.png': 'image/png', '.mp4': 'video/mp4' };
+  '.jpg': 'image/jpeg', '.png': 'image/png', '.webp': 'image/webp', '.mp4': 'video/mp4' };
 
 function json(response, status, value) {
   response.writeHead(status, { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' });

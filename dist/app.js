@@ -42,9 +42,9 @@ let queue = Promise.resolve();
 let previousFocus;
 let previousScroll = 0;
 
-function openRoom(event) {
+function openRoom(event, trigger = event.currentTarget) {
   if (!room.hidden) return;
-  previousFocus = event.currentTarget;
+  previousFocus = trigger;
   previousScroll = scrollY;
   $('#flat-info').close();
   document.body.classList.add('in-room');
