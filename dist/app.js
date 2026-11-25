@@ -1,4 +1,4 @@
-import { setupFloor, extraGarments } from './floor.js';
+import { setupFloor, extraGarments, studioGarments } from './floor.js';
 
 const $ = (selector) => document.querySelector(selector);
 const home = $('#home');
@@ -32,6 +32,7 @@ const catalog = [
     looks: ['Taupe wide-leg trousers', 'Faded black denim', 'Cream low-top sneakers'] }
 ];
 catalog.push(...extraGarments);
+const wardrobe = [...studioGarments, ...catalog];
 let selected = catalog[0];
 let tool = null;
 let stream = null;
@@ -42,21 +43,39 @@ let queue = Promise.resolve();
 let previousFocus;
 let previousScroll = 0;
 
-function openRoom(event, trigger = event.currentTarget) {
+function fireFlash() {
+  if (motion.matches) return;
+  const flash = $('#flash');
+  flash.classList.remove('fire');
+  void flash.offsetWidth;
+  flash.classList.add('fire');
+}
+
+function finishRoom() {
+  home.hidden = true;
+  home.inert = false;
+  room.inert = false;
+  document.body.classList.remove('revealing-room');
+  document.body.style.removeProperty('--room-reveal');
+  $('#room-heading').focus({ preventScroll: true });
+}
+
+function openRoom(event, trigger = event.currentTarget, animated = false) {
   if (!room.hidden) return;
   previousFocus = trigger;
   previousScroll = scrollY;
   $('#flat-info').close();
   document.body.classList.add('in-room');
-  home.hidden = true;
   room.hidden = false;
+  room.classList.toggle('rangefinder-room', animated);
   window.scrollTo({ top: 0, behavior: 'instant' });
-  $('#room-heading').focus({ preventScroll: true });
-  if (!motion.matches) {
-    const flash = $('#flash');
-    flash.classList.remove('fire');
-    void flash.offsetWidth;
-    flash.classList.add('fire');
+  if (animated) {
+    home.inert = true;
+    room.inert = true;
+    document.body.classList.add('revealing-room');
+  } else {
+    finishRoom();
+    fireFlash();
   }
 }
 
@@ -80,6 +99,7 @@ $('#back').addEventListener('click', () => {
   stopCamera();
   room.hidden = true;
   home.hidden = false;
+  floorController.restoreStudio();
   window.scrollTo({ top: previousScroll, behavior: 'instant' });
   previousFocus?.focus({ preventScroll: true });
   document.body.classList.remove('in-room');
@@ -98,9 +118,11 @@ function showMirror(media, isLocal) {
 
 async function referenceImage(garment) {
   if (garment.upload) return garment.upload;
-  const response = await fetch(`assets/${garment.file}.jpg`);
+  const path = garment.image || `assets/${garment.file}.jpg`;
+  const response = await fetch(path);
   if (!response.ok) throw new Error('Garment image unavailable.');
-  return new File([await response.blob()], `${garment.file}.jpg`, { type: 'image/jpeg' });
+  const image = await response.blob();
+  return new File([image], path.split('/').at(-1), { type: image.type });
 }
 
 function applyGarment() {
@@ -115,7 +137,7 @@ function applyGarment() {
     if (current !== realtime || update !== revision) return;
     await current.set({
       image, enhance: false,
-      prompt: garment.file === 'yard' || garment.file === 'stallion'
+      prompt: garment.bottoms || garment.file === 'yard' || garment.file === 'stallion'
         ? 'Replace the current trousers with the reference denim jeans. Preserve the person, top and background.'
         : garment.description
         ? `Replace the current top with the reference ${garment.description}. Preserve the person, pose and background.`
@@ -189,17 +211,17 @@ function selectGarment(garment) {
   selected = garment;
   $('#selection').textContent = `Selected: ${garment.name}`;
   [...$('#garments').children].forEach((button, index) => {
-    button.setAttribute('aria-pressed', String(catalog[index] === garment));
+    button.setAttribute('aria-pressed', String(wardrobe[index] === garment));
   });
   renderTool();
   applyGarment();
 }
 
-for (const garment of catalog) {
+for (const garment of wardrobe) {
   const button = document.createElement('button');
   button.type = 'button';
   button.className = 'garment';
-  button.innerHTML = `<img src="assets/${garment.file}.jpg" alt=""><span>${garment.name}</span><small>${garment.brand}</small>`;
+  button.innerHTML = `<img src="${garment.image || `assets/${garment.file}.jpg`}" alt="" loading="lazy"><span>${garment.name}</span><small>${garment.brand || ''}</small>`;
   button.addEventListener('click', () => selectGarment(garment));
   $('#garments').append(button);
 }
@@ -243,7 +265,7 @@ function renderTool() {
     return;
   }
   if (!selected.looks) {
-    panel.innerHTML = '<h3>Complete the Look</h3><p>Pick a color direction for your uploaded garment.</p><label>Palette<select><option>Neutral</option><option>Dark</option><option>Warm</option></select></label><ul></ul>';
+    panel.innerHTML = '<h3>Complete the Look</h3><label>Palette<select><option>Neutral</option><option>Dark</option><option>Warm</option></select></label><ul></ul>';
     const ideas = { Neutral: ['Stone straight-leg trousers', 'White canvas sneakers'],
       Dark: ['Washed black jeans', 'Black leather sneakers'],
       Warm: ['Tobacco chinos', 'Cream low-top sneakers'] };
@@ -266,5 +288,5 @@ for (const name of ['size', 'style']) {
 }
 selectGarment(selected);
 
-setupFloor(catalog, selectGarment, openRoom);
+const floorController = setupFloor(wardrobe, selectGarment, openRoom, finishRoom, fireFlash);
 

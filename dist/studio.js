@@ -1,123 +1,82 @@
 import {
-  CanvasTexture, Group, Mesh, MeshBasicMaterial, MeshLambertMaterial, OrthographicCamera,
-  PlaneGeometry, RepeatWrapping, Scene, ShaderMaterial, SRGBColorSpace,
-  TextureLoader, WebGLRenderer, AmbientLight, DirectionalLight, DoubleSide
+  AmbientLight, CanvasTexture, DirectionalLight, Euler, Group, HemisphereLight, Mesh,
+  MeshBasicMaterial, OrthographicCamera, PlaneGeometry, Quaternion, RepeatWrapping, Scene,
+  ShaderMaterial, SRGBColorSpace, TextureLoader, Vector3, WebGLRenderer
 } from './vendor/three.module.min.js';
+import { createRangefinder, studioReflections } from './rangefinder.js';
 
 const asset = (file) => 'assets/studio/' + file + '.webp';
 const plane = new PlaneGeometry(1, 1);
+const mix = (a, b, t) => a + (b - a) * t;
+const smooth = (a, b, value) => {
+  const t = Math.min(1, Math.max(0, (value - a) / (b - a)));
+  return t * t * (3 - 2 * t);
+};
 
-function ground(map) {
-  map.wrapS = map.wrapT = RepeatWrapping;
-  return new Mesh(new PlaneGeometry(9000, 9000), new ShaderMaterial({
-    uniforms: { cement: { value: map } },
-    vertexShader: /* glsl */
-      'varying vec2 floorXY; void main() { floorXY = position.xy; gl_Position = projectionMatrix * modelViewMatrix * vec4(position,1.); }',
-    fragmentShader: /* glsl */
-      'uniform sampler2D cement; varying vec2 floorXY;' +
-      'float hash(vec2 p) { return fract(sin(dot(p,vec2(127.1,311.7)))*43758.5453); }' +
-      'float noise(vec2 p) { vec2 i=floor(p), f=fract(p); f=f*f*(3.-2.*f);' +
-      'return mix(mix(hash(i),hash(i+vec2(1,0)),f.x),mix(hash(i+vec2(0,1)),hash(i+1.),f.x),f.y); }' +
-      'void main() {' +
-      'vec2 p=floorXY; vec3 stone=texture2D(cement,p/530.).rgb;' +
-      'float mottle=(noise(p/235.)-.5)*.06+(noise(p/63.)-.5)*.03+(noise(p/16.)-.5)*.015;' +
-      'float sun=exp(-dot((p-vec2(-570.,425.))/vec2(1080.,740.),(p-vec2(-570.,425.))/vec2(1080.,740.)));' +
-      'float pane=cos((p.x+p.y*.7)/47. + .8);' +
-      'float light=sun*(.22+.035*smoothstep(-.8,-.12,pane));' +
-      'gl_FragColor=vec4(stone*(.83+light)+mottle+light*vec3(.23,.17,.09),1.);' +
-      '\n#include <colorspace_fragment>\n' +
-      '}'
+function ground(maps) {
+  for (const map of maps) map.wrapS = map.wrapT = RepeatWrapping;
+  return new Mesh(new PlaneGeometry(14000, 14000), new ShaderMaterial({
+    uniforms: { cement: { value: maps[0] }, aggregate: { value: maps[1] } },
+    vertexShader: VERTEX,
+    fragmentShader: GROUND
   }));
 }
 
 function shadowTexture(image, blur) {
   const canvas = document.createElement('canvas');
-  canvas.width = canvas.height = 128;
+  canvas.width = canvas.height = 160;
   const context = canvas.getContext('2d');
   context.filter = 'blur(' + blur + 'px) brightness(0)';
-  context.drawImage(image, 14, 14, 100, 100);
+  context.drawImage(image, 23, 23, 114, 114);
   return new CanvasTexture(canvas);
 }
 
-function shadows(image, width, height) {
-  return [[3.8, .37, 12, -15], [1.15, .59, 3, -4]].map(([blur, opacity, x, y]) => {
+function makeShadows(image, width, height, thickness, camera = false) {
+  return [[6 + thickness * .16, .31, 1.05], [2.1, .48, .28], [.72, .36, .08]].map(([blur, opacity, spread], index) => {
     const mesh = new Mesh(plane, new MeshBasicMaterial({
-      map: shadowTexture(image, blur), color: 0x352a26, transparent: true, depthWrite: false, opacity
+      map: shadowTexture(image, blur), transparent: true, depthWrite: false, opacity
     }));
-    mesh.scale.set(width * 1.28, height * 1.28, 1);
-    mesh.position.set(x, y, 1);
-    return mesh;
+    mesh.scale.set(width * 1.405, height * 1.405, 1);
+    mesh.position.set((9 + thickness) * spread, -(13 + thickness) * spread, 1 + index * .05);
+    mesh.renderOrder = camera ? 2 : 1;
+    return { mesh, opacity, spread };
   });
 }
 
-function fabric(map, { width, height, bend, angle }) {
-  const geometry = new PlaneGeometry(width, height, 28, 22);
-  const vertices = geometry.attributes.position;
-  for (let i = 0; i < vertices.count; i++) {
-    const u = vertices.getX(i) / width;
-    const v = vertices.getY(i) / height;
-    const roll = Math.exp(-((v + .43) ** 2) / .004) * 5;
-    const wrinkles = Math.sin(u * 18 + v * 9 + angle) * Math.cos(v * 9 - u * 4);
-    vertices.setZ(i, 5 + roll + (1 + wrinkles) * bend);
-    vertices.setX(i, vertices.getX(i) + 2 * Math.sin(v * 12 + angle));
-  }
-  geometry.computeVertexNormals();
-  return new Mesh(geometry, new MeshLambertMaterial({ map, alphaTest: .44, alphaToCoverage: true }));
-}
-
-function cameraBack(image) {
-  const canvas = document.createElement('canvas');
-  canvas.width = image.width;
-  canvas.height = image.height;
-  const context = canvas.getContext('2d');
-  const [width, height] = [canvas.width, canvas.height];
-  const body = context.createLinearGradient(0, 15, 0, height - 10);
-  body.addColorStop(0, '#898781');
-  body.addColorStop(.24, '#3f3e39');
-  body.addColorStop(.43, '#161815');
-  body.addColorStop(.92, '#252521');
-  body.addColorStop(1, '#74736b');
-  context.save();
-  context.translate(width * .49, height * .49);
-  context.rotate(-.43);
-  context.fillStyle = body;
-  context.fillRect(-width, -height, width * 2, height * 2);
-  context.fillStyle = '#090b09';
-  context.roundRect(-85, -38, 144, 102, 6);
-  context.fill();
-  context.fillStyle = '#252c26';
-  context.fillRect(-76, -29, 126, 81);
-  context.strokeStyle = '#6d7565';
-  context.strokeRect(-29, -6, 29, 29);
-  context.fillStyle = '#aaa99f';
-  context.font = 'bold 11px system-ui';
-  context.fillText('DЯAPE', -81, 79);
-  for (const y of [-18, 13, 43]) {
-    context.beginPath();
-    context.arc(86, y, 7, 0, Math.PI * 2);
-    context.fill();
-  }
-  context.restore();
-  context.globalCompositeOperation = 'destination-in';
-  context.drawImage(image, 0, 0);
-  const map = new CanvasTexture(canvas);
-  map.colorSpace = SRGBColorSpace;
-  return map;
+function cameraMask() {
+  const image = document.createElement('canvas');
+  image.width = 260;
+  image.height = 175;
+  const ctx = image.getContext('2d');
+  ctx.fillStyle = '#000';
+  ctx.beginPath();
+  ctx.roundRect(6, 18, 247, 149, 15);
+  ctx.fill();
+  ctx.beginPath();
+  ctx.roundRect(156, 5, 43, 30, 8);
+  ctx.roundRect(23, 9, 37, 24, 6);
+  ctx.fill();
+  return image;
 }
 
 export async function createStudio(floor, pieces, cameraPiece, draw) {
-  const renderer = new WebGLRenderer({ antialias: true, alpha: true, powerPreference: 'low-power' });
-  renderer.setPixelRatio(Math.min(devicePixelRatio, 1.6));
+  const renderer = new WebGLRenderer({ antialias: true, alpha: true, powerPreference: 'default' });
+  renderer.setPixelRatio(Math.min(devicePixelRatio, 1.5));
   renderer.domElement.className = 'studio-canvas';
   renderer.domElement.setAttribute('aria-hidden', 'true');
   const world = new Scene();
+  const cameraWorld = new Scene();
   const view = new OrthographicCamera(0, 0, 0, 0, 1, 4000);
   view.position.z = 1500;
-  const sun = new DirectionalLight(0xffebd5, 1.18);
+  const sun = new DirectionalLight(0xffeedc, 3.2);
   sun.position.set(-420, 520, 740);
-  world.add(new AmbientLight(0xf1f5ff, 1.13), sun);
+  const fill = new DirectionalLight(0xb9c7ec, 1.1);
+  fill.position.set(550, -220, 650);
+  const reflection = studioReflections();
+  cameraWorld.environment = reflection;
+  cameraWorld.environmentIntensity = 1.25;
+  cameraWorld.add(new AmbientLight(0xe9e2d6, .55), new HemisphereLight(0xfaf0db, 0x3d3433, 1.15), sun, fill);
   const loader = new TextureLoader();
-
   async function load(file) {
     const texture = await loader.loadAsync(asset(file));
     texture.colorSpace = SRGBColorSpace;
@@ -125,62 +84,110 @@ export async function createStudio(floor, pieces, cameraPiece, draw) {
     return texture;
   }
 
-  const [cement, cameraMap, ...maps] = await Promise.all([
-    load('cement'), load('camera'), ...pieces.map(({ file }) => load(file))
+  const [cement, aggregate, ...maps] = await Promise.all([
+    load('pack-cement-0'), load('pack-cement-1'), ...pieces.map(({ file }) => load(file))
   ]).catch((error) => {
     renderer.dispose();
+    reflection.dispose();
     throw error;
   });
-  world.add(ground(cement));
+  world.add(ground([cement, aggregate]));
   pieces.forEach((piece, i) => {
+    const { x, y, width, height, angle, stack } = piece;
     const object = new Group();
-    object.position.set(piece.x, -piece.y, 0);
-    const rotated = new Group();
-    rotated.rotation.z = -piece.angle;
-    rotated.add(fabric(maps[i], piece));
-    const layers = shadows(maps[i].image, piece.width, piece.height);
-    for (const layer of layers) {
-      const { x, y } = layer.position;
-      layer.position.set(0, 0, 1);
+    object.position.set(x, -y, 0);
+    const surface = new Mesh(plane, new ShaderMaterial({
+      uniforms: { photo: { value: maps[i] } },
+      vertexShader: GARMENT_VERTEX,
+      fragmentShader: GARMENT,
+      transparent: true,
+      depthWrite: false
+    }));
+    surface.rotation.z = -angle;
+    surface.position.z = 5 + stack;
+    surface.scale.set(width, height, 1);
+    surface.renderOrder = 10 + stack;
+    object.add(surface);
+    for (const { mesh } of makeShadows(maps[i].image, width, height, stack + 5)) {
       const anchor = new Group();
-      anchor.position.set(x, y, 0);
-      anchor.rotation.z = -piece.angle;
-      anchor.add(layer);
+      anchor.position.copy(mesh.position);
+      mesh.position.set(0, 0, 0);
+      anchor.rotation.z = -angle;
+      anchor.add(mesh);
       object.add(anchor);
     }
-    object.add(rotated);
     world.add(object);
   });
 
   const { x, y, width, height } = cameraPiece;
-  const body = new Group();
-  body.position.set(x, -y, 12);
-  const cameraGeometry = new PlaneGeometry(width, height);
-  const front = new Mesh(cameraGeometry, new MeshBasicMaterial({ map: cameraMap, alphaTest: .48, alphaToCoverage: true, side: DoubleSide }));
-  const back = new Mesh(cameraGeometry, new MeshBasicMaterial({ map: cameraBack(cameraMap.image), alphaTest: .48, alphaToCoverage: true, side: DoubleSide }));
-  front.position.z = 7;
-  back.position.z = -7;
-  // Thin silhouette layers give the existing camera face a visible body as it turns.
-  for (const z of [-5, -2, 1, 4]) {
-    const edge = new Mesh(cameraGeometry, new MeshBasicMaterial({ map: cameraMap, color: 0x514b42, alphaTest: .48, side: DoubleSide }));
-    edge.position.z = z;
-    body.add(edge);
+  const model = createRangefinder();
+  cameraWorld.add(model);
+  const cameraShadows = makeShadows(cameraMask(), width, height * .88, 14, true);
+  world.add(...cameraShadows.map(({ mesh }) => mesh));
+  const backdrop = document.createElement('canvas');
+  backdrop.className = 'studio-transition-backdrop';
+  backdrop.setAttribute('aria-hidden', 'true');
+  const backContext = backdrop.getContext('2d');
+  floor.prepend(backdrop, renderer.domElement);
+  const rest = new Quaternion().setFromEuler(new Euler(.20, -.17, .32, 'ZYX'));
+  const portrait = new Quaternion().setFromEuler(new Euler(0, Math.PI, -Math.PI / 2, 'ZYX'));
+  const hoverRotation = new Quaternion();
+  const rear = new Quaternion().setFromEuler(new Euler(.02, Math.PI, .06, 'ZYX'));
+  const root = new Vector3(x, -y, 32);
+  let hasBackdrop = false;
+  let contextLost = false;
+  let docked;
+  const dockView = new OrthographicCamera(-75.5, 75.5, 110.5, -110.5, 1, 4000);
+  dockView.position.z = 1500;
+
+  function renderDock() {
+    if (!docked || contextLost) return;
+    const { clientWidth, clientHeight } = docked;
+    if (!clientWidth || !clientHeight) return;
+    const scale = Math.min(clientWidth / 151, clientHeight / 221);
+    dockView.left = -clientWidth / scale / 2;
+    dockView.right = -dockView.left;
+    dockView.top = clientHeight / scale / 2;
+    dockView.bottom = -dockView.top;
+    dockView.updateProjectionMatrix();
+    renderer.setSize(clientWidth, clientHeight, false);
+    model.position.set(0, 0, 32);
+    model.quaternion.copy(portrait);
+    model.scale.setScalar(1);
+    renderer.autoClear = true;
+    renderer.render(cameraWorld, dockView);
   }
-  body.add(front, back);
-  const cameraShadows = shadows(cameraMap.image, width, height);
-  world.add(body, ...cameraShadows);
-  floor.prepend(renderer.domElement);
+  const watchDock = new ResizeObserver(renderDock);
   renderer.domElement.addEventListener('webglcontextlost', (event) => {
     event.preventDefault();
+    contextLost = true;
     floor.classList.remove('has-studio');
   });
   renderer.domElement.addEventListener('webglcontextrestored', () => {
+    contextLost = false;
+    hasBackdrop = false;
     floor.classList.add('has-studio');
-    draw();
+    if (docked) renderDock();
+    else draw();
   });
   floor.classList.add('has-studio');
 
   return {
+    get available() { return !contextLost; },
+    dock(screen) {
+      docked = screen;
+      screen.prepend(renderer.domElement);
+      backdrop.style.opacity = 0;
+      hasBackdrop = false;
+      watchDock.observe(screen);
+      renderDock();
+    },
+    undock() {
+      if (!docked) return;
+      watchDock.unobserve(docked);
+      docked = null;
+      backdrop.after(renderer.domElement);
+    },
     resize(width, height, scale) {
       renderer.setSize(width, height, false);
       view.left = -width / scale / 2;
@@ -189,20 +196,119 @@ export async function createStudio(floor, pieces, cameraPiece, draw) {
       view.bottom = -view.top;
       view.updateProjectionMatrix();
     },
-    render(panX, panY, hover, flip) {
+    render(panX, panY, hover, pointer, progress, destination) {
+      if (contextLost || docked) return;
       view.position.x = panX;
       view.position.y = -panY;
-      const lift = hover * 9 + Math.sin(flip * Math.PI) * 32;
-      body.position.z = 12 + lift;
-      body.position.y = -y + hover * 11 + lift * .25;
-      body.rotation.set(-hover * .24 + flip * Math.PI, hover * .21, hover * .07);
-      body.scale.setScalar(1 + hover * .055 + flip * .23);
-      for (const [i, shadow] of cameraShadows.entries()) {
-        shadow.position.set(x + (i ? 3 : 12) + lift * .43, -y - (i ? 4 : 15) - lift * .32, 1);
-        shadow.scale.set(width * 1.28 * (1 + lift / 240), height * 1.28 * (1 + lift / 240) * Math.max(.18, Math.abs(Math.cos(body.rotation.x))), 1);
-        shadow.material.opacity = (i ? .59 : .37) * (1 - lift / 100);
+      const entering = progress > 0;
+      const approach = smooth(0, .40, progress);
+      const turn = smooth(.22, .65, progress);
+      const dock = destination ? smooth(.66, .96, progress) : 0;
+      const lift = hover * 13 + approach * 23;
+      model.position.copy(root);
+      model.position.y += hover * 7 + approach * 12;
+      model.position.z += lift;
+      const zoom = mix(1.12 + hover * .015, 1.82, approach);
+      hoverRotation.setFromEuler(new Euler(-pointer.y * hover * .19, pointer.x * hover * .22, 0));
+      model.quaternion.copy(rest).multiply(hoverRotation).slerp(rear, turn).slerp(portrait, dock);
+      if (destination) {
+        model.position.x = mix(model.position.x, panX + destination.x, dock);
+        model.position.y = mix(model.position.y, -panY + destination.y, dock);
       }
-      renderer.render(world, view);
+      model.scale.setScalar(mix(zoom, destination?.scale ?? 1, dock));
+      for (const { mesh, opacity, spread } of cameraShadows) {
+        mesh.position.x = x + (12 + lift) * spread;
+        mesh.position.y = -y - (18 + lift) * spread;
+        mesh.rotation.z = .32;
+        mesh.scale.set(width * (1.40 + lift * .008), height * (1.24 + lift * .007), 1);
+        mesh.material.opacity = opacity * (1 - Math.min(.92, lift / 58));
+      }
+      renderer.autoClear = true;
+      if (entering) {
+        if (!hasBackdrop) {
+          renderer.render(world, view);
+          backdrop.width = renderer.domElement.width;
+          backdrop.height = renderer.domElement.height;
+          backContext.drawImage(renderer.domElement, 0, 0);
+          hasBackdrop = true;
+        }
+        backdrop.style.opacity = 1 - smooth(.63, .94, progress);
+        backdrop.style.filter = 'blur(' + (approach * 13) + 'px)';
+        renderer.render(cameraWorld, view);
+      } else {
+        if (hasBackdrop) {
+          backdrop.style.opacity = 0;
+          renderer.domElement.style.opacity = 1;
+          hasBackdrop = false;
+        }
+        renderer.render(world, view);
+        renderer.autoClear = false;
+        renderer.clearDepth();
+        renderer.render(cameraWorld, view);
+      }
     }
   };
 }
+
+const VERTEX = /* glsl */ `
+  varying vec2 floorXY;
+  void main() {
+    floorXY = position.xy;
+    gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.);
+  }
+`;
+
+const LIGHT = /* glsl */ `
+  float studioLight(vec2 p) {
+    vec2 q = p-vec2(-650., 465.);
+    float panel = dot(q, vec2(.39,.92));
+    float falloff = exp(-dot(q/vec2(1030.,580.),q/vec2(1030.,580.)));
+    float bars = smoothstep(-.72,.45,cos(panel*.063+.52*sin(p.x*.002)));
+    return falloff*(.16+.56*bars);
+  }
+`;
+
+const GROUND = /* glsl */ `
+  uniform sampler2D cement, aggregate;
+  varying vec2 floorXY;
+  float hash(vec2 p) { return fract(sin(dot(p, vec2(127.1,311.7))) * 43758.5453); }
+  float noise(vec2 p) {
+    vec2 i = floor(p), f = fract(p);
+    f = f*f*(3.-2.*f);
+    return mix(mix(hash(i),hash(i+vec2(1,0)),f.x),mix(hash(i+vec2(0,1)),hash(i+1.),f.x),f.y);
+  }
+  ${LIGHT}
+  void main() {
+    vec2 p = floorXY;
+    float blend = smoothstep(.18,.81,noise(p/340.));
+    vec3 a = texture2D(cement, p/840.).rgb;
+    vec3 b = texture2D(aggregate, mat2(.71,-.71,.71,.71)*p/1107.).rgb;
+    vec3 stone = mix(a,b,blend);
+    float stain = (noise(p/188.)-.5)*.052+(noise(p/57.)-.5)*.019;
+    float sun = studioLight(p);
+    gl_FragColor = vec4(max(stone*(.89+sun*1.8)+stain+sun*vec3(.17,.106,.062),0.),1.);
+    #include <colorspace_fragment>
+  }
+`;
+
+const GARMENT_VERTEX = /* glsl */ `
+  varying vec2 imageUV, surfaceXY;
+  void main() {
+    imageUV = uv;
+    surfaceXY = (modelMatrix*vec4(position,1.)).xy;
+    gl_Position = projectionMatrix * modelViewMatrix * vec4(position,1.);
+  }
+`;
+
+const GARMENT = /* glsl */ `
+  uniform sampler2D photo;
+  varying vec2 imageUV, surfaceXY;
+  ${LIGHT}
+  void main() {
+    vec4 garment = texture2D(photo,imageUV);
+    if (garment.a < .024) discard;
+    float sun = studioLight(surfaceXY);
+    gl_FragColor = vec4(garment.rgb*(.91+sun*.43)+sun*vec3(.018,.01,.004),garment.a);
+    #include <colorspace_fragment>
+  }
+`;

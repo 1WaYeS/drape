@@ -1,4 +1,5 @@
 import { textures } from './studio-textures.js';
+import { packTextures } from './pack-textures.js';
 
 const gorur = 'Gorur Ghash';
 const rebels = 'Wrongs & Rebels';
@@ -23,16 +24,35 @@ export const extraGarments = [
 ];
 
 
-const placements = {
-  maroon: [-490,-181,290,-16], flight: [-225,-142,244,16],
-  coast: [-35,-306,285,26], cornflower: [250,-300,233,-15],
-  green: [505,-230,269,21], stripe: [633,58,285,-15],
-  pearl: [-652,95,272,16], fig: [-417,248,282,22],
-  yard: [-78,282,312,-65], stallion: [413,324,287,27],
-  zigzag: [-125,-665,290,11], plum: [-1050,-86,278,-23],
-  cream: [1050,8,274,21], brown: [80,650,290,-13],
-  anchor: [-1040,674,286,37], ash: [917,-610,288,-22],
-  forest: [-921,-583,310,20], wrath: [908,605,290,-12]
+const studioEdit = {
+  'maroon-knit-polo': ['Maroon Knit Polo', -614, -237, 363, -16, 18],
+  'black-graphic-tee': ['Black Graphic Tee', -442, -163, 338, 21, 0],
+  'plaid-shirt': ['Plaid Shirt', 14, -410, 363, 38, 1],
+  'blue-knit-polo': ['Blue Cable Knit Polo', 332, -337, 280, 28, 2],
+  'brown-knit-polo': ['Brown Knit Polo', 627, -163, 272, -18, 0],
+  'brown-jacket': ['Brown Jacket', 748, 76, 324, 17, 14],
+  'cream-knit-polo': ['Cream Knit Polo', -805, 94, 289, 13, 2],
+  'washed-graphic-tee': ['Washed Graphic Tee', -508, 297, 355, 24, 1],
+  'blue-denim': ['Blue Denim', -25, 316, 409, 26, 2, true],
+  'brown-jeans': ['Brown Jeans', 510, 418, 392, 14, 3, true],
+  'charcoal-graphic-tee': ['Charcoal Graphic Tee', 1035, -504, 370, -14, 1]
+};
+
+export const studioGarments = Object.entries(studioEdit).map(([id, [name,,,,,,bottoms]]) => ({
+  name, file: 'pack-' + id, studioAsset: id, bottoms,
+  image: 'assets/studio/pack-' + id + '.webp'
+}));
+
+const exploration = {
+  maroon: [-1870,-788,355,-15], green: [1212,-928,320,21],
+  flight: [2087,-1190,358,-12], coast: [-1090,-675,346,26],
+  cornflower: [74,-1435,310,-14], stripe: [2250,10,350,-15],
+  pearl: [-2330,31,349,15], fig: [-290,851,342,27],
+  yard: [1156,764,350,-49], stallion: [1790,1120,326,21],
+  zigzag: [-470,-886,320,11], plum: [-1284,-102,346,-19],
+  cream: [1295,115,314,23], brown: [120,1330,329,-13],
+  anchor: [-2260,1360,365,34], ash: [1550,-430,315,-22],
+  forest: [-2160,-1250,350,20], wrath: [2260,1380,345,-12]
 };
 
 const prices = {
@@ -41,10 +61,11 @@ const prices = {
   plum: 1399, cream: 1349, anchor: 1899, ash: 1699, forest: 1599, wrath: 1399
 };
 const amount = new Intl.NumberFormat('en-BD');
-const cameraPiece = { x: 111, y: -15, width: 230, height: 182, angle: 0 };
+const cameraPiece = { x: 93, y: -40, width: 265, height: 191, angle: -.32 };
+const bounds = { x: 2380, y: 1460 };
 const limit = (value, max) => Math.max(-max, Math.min(max, value));
 
-function shutter() {
+function shutter(delay) {
   const Audio = window.AudioContext || window.webkitAudioContext;
   if (!Audio) return;
   const context = new Audio();
@@ -65,10 +86,10 @@ function shutter() {
   sound.buffer = buffer;
   sound.connect(filter).connect(volume).connect(context.destination);
   sound.onended = () => context.close();
-  sound.start();
+  sound.start(context.currentTime + delay);
 }
 
-export function setupFloor(catalog, selectGarment, openRoom) {
+export function setupFloor(catalog, selectGarment, openRoom, finishRoom, fireFlash) {
   const floor = document.querySelector('#floor');
   const scene = document.querySelector('#floor-scene');
   const items = document.querySelector('#floor-garments');
@@ -76,11 +97,14 @@ export function setupFloor(catalog, selectGarment, openRoom) {
   const camera = document.querySelector('#scene-camera');
   const cameraCaption = document.querySelector('.camera-caption');
   const reduced = matchMedia('(prefers-reduced-motion: reduce)');
-  let drag, spring, active, chosen, studio, frame, flipStarted, flipFinished, flipTrigger;
+  let drag, spring, active, chosen, studio, frame, transition;
   let x = 0;
   let y = 0;
   let hover = 0;
   let hoverTarget = 0;
+  let hoverVelocity = 0;
+  let lastFrame = 0;
+  const pointer = { x: 0, y: 0 };
   let scale = 1;
   let width = 0;
   let height = 0;
@@ -100,7 +124,10 @@ export function setupFloor(catalog, selectGarment, openRoom) {
 
   function draw(now) {
     frame = 0;
-    let flip = 0;
+    const dt = Math.min((now - lastFrame) / 1000, .045);
+    lastFrame = now;
+    let progress = 0;
+    let destination;
     if (spring) {
       const t = Math.max(0, Math.min((now - spring.start) / 630, 1));
       const settle = Math.exp(-7 * t) * (1 + 7 * t) * (1 - t);
@@ -108,35 +135,59 @@ export function setupFloor(catalog, selectGarment, openRoom) {
       y = spring.y * settle;
       if (t === 1) spring = null;
     }
-    if (flipTrigger) {
-      flipStarted ??= now;
-      const t = Math.min((now - flipStarted) / 485, 1);
-      flip = t * t * (3 - 2 * t);
-      if (t === 1) flipFinished ??= now;
-      if (flipFinished != null && now - flipFinished >= 85) {
-        const trigger = flipTrigger;
-        flipTrigger = null;
-        hover = hoverTarget = 0;
-        openRoom(null, trigger);
-        flip = 0;
+    if (transition) {
+      transition.started ??= now;
+      progress = Math.min((now - transition.started) / 1250, 1);
+      if (progress >= .24 && !transition.flashed) {
+        transition.flashed = true;
+        fireFlash();
+      }
+      if (progress >= .65 && !transition.roomOpened) {
+        transition.roomOpened = true;
+        openRoom(null, transition.trigger, true);
+      }
+      if (transition.roomOpened) {
+        const bounds = document.querySelector('.camera-back').getBoundingClientRect();
+        destination = {
+          x: (bounds.left + bounds.width / 2 - width / 2) / scale,
+          y: (height / 2 - bounds.top - bounds.height / 2) / scale,
+          scale: Math.min(bounds.width / 151, bounds.height / 221) / scale
+        };
+        document.body.style.setProperty('--room-reveal', Math.min((progress - .65) / .3, 1));
       }
     }
-    hover += (hoverTarget - hover) * (reduced.matches ? 1 : .19);
-    if (Math.abs(hoverTarget - hover) < .003) hover = hoverTarget;
+    const offset = hover - hoverTarget;
+    const frequency = 17;
+    const slope = hoverVelocity + frequency * offset;
+    const decay = Math.exp(-frequency * dt);
+    hover = hoverTarget + (offset + slope * dt) * decay;
+    hoverVelocity = (hoverVelocity - frequency * slope * dt) * decay;
+    if (reduced.matches || Math.abs(hoverTarget - hover) < .003 && Math.abs(hoverVelocity) < .02) {
+      hover = hoverTarget;
+      hoverVelocity = 0;
+    }
     scene.style.transform = 'translate(' + (-x * scale) + 'px,' + (-y * scale) + 'px) scale(' + scale + ')';
     floor.style.setProperty('--floor-x', -x * scale + 'px');
     floor.style.setProperty('--floor-y', -y * scale + 'px');
-    camera.style.setProperty('--flip', flip);
-    camera.style.setProperty('--lift', hover);
-    if (width && height && !floor.closest('[hidden]')) studio?.render(x, y, hover, flip);
-    if (spring || flipTrigger || hover !== hoverTarget) requestDraw();
+    floor.classList.toggle('camera-hovered', hover > .08);
+    if (width && height && !floor.closest('[hidden]')) studio?.render(x, y, hover, pointer, progress, destination);
+    if (transition && progress === 1) {
+      transition = null;
+      hover = hoverTarget = 0;
+      hoverVelocity = 0;
+      x = y = 0;
+      floor.classList.remove('is-entering');
+      studio?.dock(document.querySelector('.camera-back'));
+      finishRoom();
+    }
+    if (spring || transition || hover !== hoverTarget) requestDraw();
   }
 
   function resize() {
     width = floor.clientWidth;
     height = floor.clientHeight;
     if (!width || !height) return;
-    scale = Math.max(width / 1530, height / 970);
+    scale = Math.max(width / 1672, height / 970);
     const narrow = width / scale < 680;
     cameraCaption.style.left = (narrow ? cameraPiece.x - 54 : cameraPiece.x + cameraPiece.width * .51) + 'px';
     cameraCaption.style.top = (cameraPiece.y + (narrow ? cameraPiece.height * .54 : 18)) + 'px';
@@ -156,11 +207,11 @@ export function setupFloor(catalog, selectGarment, openRoom) {
   }
 
   function showLabel(button, garment, event) {
-    if (drag?.moved || flipTrigger) return;
+    if (drag?.moved || transition) return;
     active = button;
-    label.querySelector('strong').textContent = garment.brand;
-    label.querySelector('span').textContent = garment.name;
-    label.querySelector('small').textContent = prices[garment.file]
+    label.querySelector('strong').textContent = garment.brand || garment.name;
+    label.querySelector('span').textContent = garment.brand ? garment.name : '';
+    label.querySelector('small').textContent = garment.studioAsset ? 'Editorial garment' : prices[garment.file]
       ? '৳' + amount.format(prices[garment.file]) : 'See retailer for price';
     label.hidden = false;
     positionLabel(button, event);
@@ -172,14 +223,17 @@ export function setupFloor(catalog, selectGarment, openRoom) {
   }
 
   const pieces = catalog.map((garment) => {
-    const [x, y, width, angle] = placements[garment.file];
-    const { aspect, outline } = textures[garment.file];
-    const piece = { file: garment.file, x, y, width, height: width / aspect, angle: angle * Math.PI / 180, bend: 3 + (width % 5) };
+    const placement = garment.studioAsset ? studioEdit[garment.studioAsset].slice(1) : exploration[garment.file];
+    const [x, y, width, angle, stack = 0] = placement;
+    const { aspect, outline } = garment.studioAsset ? packTextures[garment.studioAsset] : textures[garment.file];
+    const piece = { file: garment.file, x, y, width, height: width / aspect, angle: angle * Math.PI / 180, stack };
     const button = document.createElement('button');
     button.type = 'button';
     button.className = 'floor-garment';
-    button.setAttribute('aria-label', garment.name + ', ' + garment.brand + ', ' +
-      (prices[garment.file] ? amount.format(prices[garment.file]) + ' taka' : 'see retailer for price'));
+    button.style.zIndex = stack;
+    button.setAttribute('aria-label', garment.brand
+      ? garment.name + ', ' + garment.brand + ', ' + (prices[garment.file] ? amount.format(prices[garment.file]) + ' taka' : 'see retailer for price')
+      : garment.name);
     const cutout = document.createElement('span');
     cutout.className = 'garment-cutout';
     cutout.style.backgroundImage = 'url(assets/studio/' + garment.file + '.webp)';
@@ -208,7 +262,7 @@ export function setupFloor(catalog, selectGarment, openRoom) {
     });
     button.addEventListener('blur', () => { if (active === button) hideLabel(); });
     button.addEventListener('click', () => {
-      if (performance.now() < suppressClickUntil || flipTrigger) return;
+      if (performance.now() < suppressClickUntil || transition) return;
       chosen?.removeAttribute('aria-pressed');
       chosen = button;
       button.setAttribute('aria-pressed', 'true');
@@ -220,6 +274,12 @@ export function setupFloor(catalog, selectGarment, openRoom) {
   });
 
   place(camera, cameraPiece);
+  camera.addEventListener('pointermove', (event) => {
+    const rect = camera.getBoundingClientRect();
+    pointer.x = limit((event.clientX - rect.left) * 2 / rect.width - 1, 1);
+    pointer.y = limit((event.clientY - rect.top) * 2 / rect.height - 1, 1);
+    requestDraw();
+  });
   for (const trigger of [camera, cameraCaption]) {
     const setHover = (value) => {
       hoverTarget = value;
@@ -234,21 +294,23 @@ export function setupFloor(catalog, selectGarment, openRoom) {
     });
     trigger.addEventListener('blur', () => setHover(0));
     trigger.addEventListener('click', () => {
-      if (performance.now() < suppressClickUntil || flipTrigger) return;
+      if (performance.now() < suppressClickUntil || transition) return;
       hideLabel();
-      try { shutter(); } catch { /* Audio availability must not block entry. */ }
-      if (reduced.matches) {
+      const animate = !reduced.matches && studio?.available;
+      try { shutter(animate ? .3 : 0); } catch { /* Audio availability must not block entry. */ }
+      if (!animate) {
         openRoom(null, trigger);
       } else {
-        flipTrigger = trigger;
-        flipStarted = flipFinished = null;
+        spring = null;
+        transition = { trigger };
+        floor.classList.add('is-entering');
         setHover(0);
       }
     });
   }
 
   floor.addEventListener('pointerdown', (event) => {
-    if (!event.isPrimary || event.button !== 0 || flipTrigger) return;
+    if (!event.isPrimary || event.button !== 0 || transition) return;
     spring = null;
     drag = { id: event.pointerId, fromX: event.clientX, fromY: event.clientY, x, y, moved: false };
   });
@@ -264,10 +326,10 @@ export function setupFloor(catalog, selectGarment, openRoom) {
       hoverTarget = 0;
       hideLabel();
     }
-    const horizontalGain = Math.max(1.3 / scale, 1050 / (width * .79));
-    const verticalGain = Math.max(1.3 / scale, 730 / (height * .72));
-    x = limit(drag.x - dx * horizontalGain, 1050);
-    y = limit(drag.y - dy * verticalGain, 730);
+    const horizontalGain = Math.max(1.35 / scale, bounds.x / (width * .79));
+    const verticalGain = Math.max(1.35 / scale, bounds.y / (height * .72));
+    x = limit(drag.x - dx * horizontalGain, bounds.x);
+    y = limit(drag.y - dy * verticalGain, bounds.y);
     requestDraw();
   });
 
@@ -295,12 +357,12 @@ export function setupFloor(catalog, selectGarment, openRoom) {
   window.addEventListener('pointercancel', finish);
   floor.addEventListener('lostpointercapture', finish);
   floor.addEventListener('focusout', (event) => {
-    if (!floor.contains(event.relatedTarget) && !flipTrigger && (x || y)) resetView();
+    if (!floor.contains(event.relatedTarget) && !transition && (x || y)) resetView();
   });
   document.addEventListener('keydown', (event) => {
     if (event.key === 'Escape') {
       hideLabel();
-      if (x || y) resetView();
+      if (!transition && (x || y)) resetView();
     }
   });
 
@@ -326,4 +388,10 @@ export function setupFloor(catalog, selectGarment, openRoom) {
       info.showModal();
     });
   });
+  return {
+    restoreStudio() {
+      studio?.undock();
+      resize();
+    }
+  };
 }

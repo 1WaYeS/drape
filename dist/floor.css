@@ -35,17 +35,26 @@
 .flat-header button:hover { text-decoration: underline; text-underline-offset: .25em; }
 .flat-home, .floor { position: fixed; inset: 0; overflow: hidden; }
 .floor {
-  background-color: #a6a098;
-  background-image: linear-gradient(135deg, #fff0dc35, #30251e24), url('assets/studio/cement.webp');
+  background-color: #746961;
+  background-image: linear-gradient(140deg, #ffdcac40, transparent 50%), url('assets/studio/pack-cement-0.webp');
   background-position: center, var(--floor-x, 0px) var(--floor-y, 0px);
-  background-size: cover, 530px 530px;
+  background-size: cover, 620px 620px;
   cursor: grab;
   touch-action: none;
   user-select: none;
   overflow: clip;
 }
-.studio-canvas { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
+.studio-canvas, .studio-transition-backdrop {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+.studio-transition-backdrop { opacity: 0; transform: scale(1.025); }
 .floor:not(.has-studio) .studio-canvas { visibility: hidden; }
+.floor.is-entering { background: transparent; }
+.floor.is-entering .floor-scene, .flat-home:has(.is-entering) .drag-note { visibility: hidden; }
 .floor-scene {
   position: absolute;
   left: 50%;
@@ -71,34 +80,26 @@
 }
 .garment-hit, .camera-cutout { pointer-events: auto; }
 .floor-garment:focus-visible .garment-hit { background: #fff3; }
-.garment-cutout, .scene-camera { filter: drop-shadow(3px 4px 3px #251c196e) drop-shadow(8px 11px 8px #271f1a3f); }
+.garment-cutout { filter: drop-shadow(3px 4px 3px #251c196e) drop-shadow(8px 11px 8px #271f1a3f); }
 .has-studio .garment-cutout { visibility: hidden; }
-.has-studio .scene-camera { filter: none; }
-.has-studio .camera-cutout { opacity: 0; }
-.scene-camera { z-index: 1; perspective: 750px; }
-.camera-cutout {
-  background-image: url('assets/studio/camera.webp');
-  clip-path: polygon(0% 56%, 3% 41%, 73% 1%, 77% 0%, 81% 3%, 85% 11%, 88% 15%, 94% 38%, 99% 60%, 99% 64%, 23% 100%, 19% 97%, 4% 64%);
-  transform: translateY(calc(var(--lift, 0) * -8%))
-    rotateX(calc(var(--flip, 0) * 180deg - var(--lift, 0) * 17deg))
-    rotateY(calc(var(--lift, 0) * 13deg))
-    rotateZ(calc(var(--lift, 0) * -4deg))
-    scale(calc(1 + var(--flip, 0) * .23 + var(--lift, 0) * .06));
-  transition: filter 220ms ease;
-}
-.scene-camera:is(:hover, :focus-visible) .camera-cutout,
-.scene-camera:has(+ .camera-caption:hover) .camera-cutout {
-  filter: brightness(1.14);
-}
+.scene-camera { z-index: 30; }
+.floor:not(.has-studio) .scene-camera { visibility: hidden; }
+.camera-cutout { border-radius: 15% 10%; }
 .camera-caption {
   position: absolute;
-  z-index: 2;
-  border-radius: .4rem;
-  color: #131210;
+  z-index: 31;
+  border: 1px solid transparent;
+  border-radius: .62rem;
+  padding: .54em .72em;
+  color: #fff9f0;
   font-size: 21px;
+  text-shadow: 0 1px 6px #211914d9;
+  transition: background-color 180ms ease, border-color 180ms ease;
 }
-.camera-caption:is(:hover, :focus-visible), .scene-camera:hover + .camera-caption {
-  background: #f4f2efd9;
+.camera-caption:is(:hover, :focus-visible), .camera-hovered .camera-caption, .floor:not(.has-studio) .camera-caption {
+  background: #30282470;
+  border-color: #fff7;
+  backdrop-filter: blur(10px);
 }
 .drag-note {
   position: absolute;
@@ -111,6 +112,11 @@
   font-weight: 700;
   text-shadow: 0 1px 6px #000, 0 2px 18px #0009;
   pointer-events: none;
+  padding: .5rem .85rem;
+  border-radius: 999px;
+  border: 1px solid #fff5;
+  background: #28201c46;
+  backdrop-filter: blur(10px);
 }
 .drag-note span { padding-left: .35rem; }
 .hover-label {
@@ -121,13 +127,14 @@
   display: grid;
   gap: .1rem;
   padding: .65rem .8rem;
-  color: #141414;
-  border: 1px solid #fff7;
-  background: #eeebe6eb;
+  color: #fff9ef;
+  border: 1px solid #fff6;
+  background: #342722bc;
   backdrop-filter: blur(12px);
   box-shadow: 0 4px 18px #0002;
   border-radius: .5rem;
 }
+.hover-label span:empty { display: none; }
 .hover-label span, .hover-label small { font-size: .875rem; }
 .flat-info {
   width: min(26rem, calc(100% - 2rem));
@@ -142,7 +149,10 @@
 .flat-info h2 { font-size: 2.9rem; margin: .5rem 0 1rem; }
 .in-room .flat-header { color: white; }
 .in-room .flat-logo img { filter: invert(1); }
-body.in-room { background: #1e1b19 url('assets/floor-backdrop.jpg') center / cover fixed; }
+body.in-room { background: #211b18 radial-gradient(ellipse at 16% 14%, #5c493c, transparent 60%) fixed; }
+.revealing-room #home { z-index: 4; pointer-events: none; }
+.revealing-room #room { opacity: var(--room-reveal, 0); }
+.revealing-room .rangefinder-room .camera-back { visibility: hidden; }
 #room { padding-top: clamp(5rem, 8vw, 7.25rem); }
 .room-grid {
   background: #272322db;
@@ -151,11 +161,51 @@ body.in-room { background: #1e1b19 url('assets/floor-backdrop.jpg') center / cov
   border: 1px solid #fff4;
   border-radius: 1.25rem;
 }
+.rangefinder-room .mirror-column { min-width: 0; }
+.rangefinder-room .camera-back {
+  position: relative;
+  width: min(100%, 23rem, 46vh);
+  aspect-ratio: 151 / 221;
+  margin-inline: auto;
+  border: 0;
+  background: transparent;
+  padding: 0;
+  box-shadow: none;
+}
+.rangefinder-room .camera-back .studio-canvas {
+  filter: drop-shadow(0 17px 21px #0008);
+}
+.rangefinder-room .camera-back .view {
+  position: absolute;
+  left: 19.1%;
+  top: 27.25%;
+  width: 52.3%;
+  height: 60.65%;
+  margin: 0;
+  border-color: #3f4543;
+  border-radius: .28rem;
+  background: radial-gradient(ellipse at top left, #283635, #0e1213 78%);
+}
+.rangefinder-room .camera-brand, .rangefinder-room .camera-base {
+  position: absolute;
+  left: 19%;
+  width: 53%;
+  min-height: 0;
+  font-size: .63rem;
+}
+.rangefinder-room .camera-brand { top: 23%; }
+.rangefinder-room .camera-base { bottom: 6%; }
+.rangefinder-room .camera-base > span { display: none; }
+.rangefinder-room .camera-base .outline { padding: .2rem .4rem; white-space: nowrap; }
+.rangefinder-room #standby { padding: .25rem; font-size: .75rem; }
+.rangefinder-room .focus-box { width: 2.5rem; height: 2.5rem; }
+.rangefinder-room #start { padding: .55rem .68rem; font-size: .75rem; white-space: nowrap; }
+.rangefinder-room #status { text-align: center; }
 .garments { overflow-y: auto; max-height: min(42vh, 420px); padding: 2px 8px 2px 2px; scrollbar-color: #eee #393735; scrollbar-width: thin; }
 @media (max-aspect-ratio: 5/4) {
   .flat-header { background: linear-gradient(#e4e1d8ac, transparent); }
   .in-room .flat-header { background: linear-gradient(#1e1917ad, transparent); }
 }
 @media (prefers-reduced-motion: reduce) {
-  .camera-cutout { transition: none; }
+  .camera-caption { transition: none; }
 }
